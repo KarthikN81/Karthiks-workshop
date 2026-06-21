@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runway — Retirement Sufficiency Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0F1B2D;
+    --panel:#15233A;
+    --panel-2:#1B2C47;
+    --parchment:#F5F1E8;
+    --parchment-dim:#E7E0D1;
+    --line: rgba(245,241,232,0.14);
+    --line-strong: rgba(245,241,232,0.28);
+    --green:#4C9A73;
+    --green-dim: rgba(76,154,115,0.16);
+    --amber:#D08A3E;
+    --amber-dim: rgba(208,138,62,0.16);
+    --brick:#B14D36;
+    --brick-dim: rgba(177,77,54,0.18);
+    --text-hi:#F5F1E8;
+    --text-mid: rgba(245,241,232,0.72);
+    --text-low: rgba(245,241,232,0.46);
+    --serif: 'Source Serif 4', serif;
+    --sans: 'Inter', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--ink);color:var(--text-hi);font-family:var(--sans);}
+  body{
+    background:
+      radial-gradient(1200px 600px at 85% -10%, rgba(208,138,62,0.07), transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, rgba(76,154,115,0.06), transparent 55%),
+      var(--ink);
+    min-height:100vh;
+  }
+  a{color:inherit;}
+
+  /* ---------- Header ---------- */
+  .masthead{
+    max-width:1320px;margin:0 auto;padding:44px 32px 28px;
+    border-bottom:1px solid var(--line);
+  }
+  .masthead-row{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:baseline;gap:14px;}
+  .brand-mark{
+    font-family:var(--mono);font-size:12px;letter-spacing:0.14em;color:var(--amber);
+    border:1px solid var(--amber-dim);background:var(--amber-dim);
+    padding:3px 8px;border-radius:3px;text-transform:uppercase;
+  }
+  h1{
+    font-family:var(--serif);font-weight:600;font-size:clamp(28px,4vw,40px);
+    margin:14px 0 6px;letter-spacing:-0.01em;color:var(--text-hi);
+  }
+  .tagline{font-size:15px;color:var(--text-mid);max-width:640px;line-height:1.55;margin:0;}
+  .meta-date{font-family:var(--mono);font-size:12px;color:var(--text-low);white-space:nowrap;}
+
+  /* ---------- Layout ---------- */
+  .layout{
+    max-width:1320px;margin:0 auto;padding:40px 32px 80px;
+    display:grid;grid-template-columns:380px 1fr;gap:28px;
+    align-items:start;
+  }
+  @media (max-width:980px){
+    .layout{grid-template-columns:1fr;}
+  }
+
+  /* ---------- Ledger (inputs) panel ---------- */
+  .ledger{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:28px 26px 26px;
+    position:sticky;top:24px;
+  }
+  @media (max-width:980px){ .ledger{position:static;} }
+
+  .ledger-title{
+    font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;
+    color:var(--text-low);margin:0 0 18px;display:flex;justify-content:space-between;align-items:center;
+  }
+  .ledger-title span.num{color:var(--amber);}
+
+  .field{margin-bottom:18px;}
+  .field label{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-size:13px;color:var(--text-mid);margin-bottom:7px;font-weight:500;
+  }
+  .field label .hint{font-family:var(--mono);font-size:11px;color:var(--text-low);font-weight:400;}
+  .input-wrap{position:relative;display:flex;align-items:center;}
+  .input-wrap .prefix, .input-wrap .suffix{
+    font-family:var(--mono);font-size:13px;color:var(--text-low);position:absolute;pointer-events:none;
+  }
+  .input-wrap .prefix{left:12px;}
+  .input-wrap .suffix{right:12px;}
+  input[type="number"]{
+    width:100%;background:var(--ink);border:1px solid var(--line);border-radius:6px;
+    color:var(--text-hi);font-family:var(--mono);font-size:14.5px;padding:10px 12px;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  input[type="number"].has-prefix{padding-left:26px;}
+  input[type="number"].has-suffix{padding-right:32px;}
+  input[type="number"]:focus{outline:none;border-color:var(--amber);background:#101b2d;}
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+
+  .slider-row{display:flex;align-items:center;gap:12px;margin-top:8px;}
+  input[type="range"]{
+    flex:1;height:4px;border-radius:2px;background:var(--line-strong);
+    -webkit-appearance:none;appearance:none;cursor:pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+    background:var(--amber);border:2px solid var(--ink);cursor:pointer;
+    box-shadow:0 0 0 1px var(--amber);
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:13px;height:13px;border-radius:50%;background:var(--amber);border:2px solid var(--ink);cursor:pointer;
+  }
+  .slider-val{font-family:var(--mono);font-size:13px;color:var(--text-hi);width:54px;text-align:right;flex-shrink:0;}
+
+  .divider-row{
+    display:flex;align-items:center;gap:10px;margin:24px 0 16px;
+  }
+  .divider-row .num{
+    font-family:var(--mono);font-size:11px;color:var(--ink);background:var(--amber);
+    width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .divider-row .lbl{font-family:var(--mono);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-low);}
+  .divider-row .rule{flex:1;height:1px;background:var(--line);}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+  select{
+    width:100%;background:var(--ink);border:1px solid var(--line);border-radius:6px;
+    color:var(--text-hi);font-family:var(--sans);font-size:13.5px;padding:10px 12px;
+    appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0L5 6L10 0' fill='%23F5F1E8' opacity='0.5'/></svg>");
+    background-repeat:no-repeat;background-position:right 12px center;
+  }
+  select:focus{outline:none;border-color:var(--amber);}
+
+  .toggle-group{display:flex;gap:8px;}
+  .toggle-btn{
+    flex:1;background:var(--ink);border:1px solid var(--line);border-radius:6px;
+    color:var(--text-mid);font-family:var(--sans);font-size:13px;padding:9px 8px;cursor:pointer;
+    transition:all .15s ease;text-align:center;font-weight:500;
+  }
+  .toggle-btn.active{background:var(--amber-dim);border-color:var(--amber);color:var(--amber);}
+  .toggle-btn:hover:not(.active){border-color:var(--line-strong);}
+
+  .mc-settings{
+    background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:16px 16px 4px;margin-top:4px;
+  }
+
+  .run-btn{
+    width:100%;margin-top:22px;background:var(--amber);color:#1A1208;border:none;
+    font-family:var(--sans);font-weight:700;font-size:15px;padding:14px;border-radius:7px;
+    cursor:pointer;transition:transform .12s ease, box-shadow .12s ease;
+    box-shadow:0 6px 18px rgba(208,138,62,0.25);
+  }
+  .run-btn:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(208,138,62,0.35);}
+  .run-btn:active{transform:translateY(0px);}
+  .run-note{font-size:11.5px;color:var(--text-low);text-align:center;margin-top:9px;line-height:1.5;}
+
+  /* ---------- Results column ---------- */
+  .results{display:flex;flex-direction:column;gap:22px;}
+
+  .hero-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:36px 36px;display:grid;grid-template-columns:auto 1fr;gap:36px;align-items:center;
+  }
+  @media (max-width:760px){ .hero-card{grid-template-columns:1fr;text-align:center;} }
+  .hero-figure{display:flex;flex-direction:column;align-items:flex-start;}
+  @media (max-width:760px){ .hero-figure{align-items:center;} }
+  .hero-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-low);margin-bottom:10px;}
+  .hero-number{font-family:var(--serif);font-size:clamp(56px,9vw,86px);font-weight:600;line-height:0.95;letter-spacing:-0.02em;}
+  .hero-number.success{color:var(--green);}
+  .hero-number.caution{color:var(--amber);}
+  .hero-number.danger{color:var(--brick);}
+  .hero-sub{font-size:13.5px;color:var(--text-mid);margin-top:8px;}
+  .hero-divider{width:1px;align-self:stretch;background:var(--line);}
+  .hero-stats{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:760px){ .hero-stats{grid-template-columns:1fr 1fr;margin-top:20px;} }
+  .hstat .v{font-family:var(--mono);font-size:21px;font-weight:600;color:var(--text-hi);}
+  .hstat .l{font-size:12px;color:var(--text-low);margin-top:4px;}
+
+  .panel-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:26px 28px;
+  }
+  .panel-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:18px;flex-wrap:wrap;gap:8px;}
+  .panel-head h2{font-family:var(--serif);font-size:19px;font-weight:600;margin:0;color:var(--text-hi);}
+  .panel-head .sub{font-size:12.5px;color:var(--text-low);}
+
+  .chart-wrap{width:100%;overflow-x:auto;}
+  svg.chart{width:100%;height:auto;display:block;}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--text-mid);}
+  .legend-item{display:flex;align-items:center;gap:7px;}
+  .legend-swatch{width:12px;height:12px;border-radius:2px;flex-shrink:0;}
+
+  table.data-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px;}
+  table.data-table th{
+    text-align:right;font-family:var(--sans);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;
+    color:var(--text-low);padding:0 10px 10px;border-bottom:1px solid var(--line);font-weight:600;
+  }
+  table.data-table th:first-child, table.data-table td:first-child{text-align:left;}
+  table.data-table td{padding:9px 10px;border-bottom:1px solid var(--line);color:var(--text-hi);text-align:right;}
+  table.data-table tr:last-child td{border-bottom:none;}
+  table.data-table tr:hover td{background:rgba(245,241,232,0.02);}
+
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-family:var(--sans);font-size:11.5px;font-weight:600;}
+  .pill.green{background:var(--green-dim);color:var(--green);}
+  .pill.amber{background:var(--amber-dim);color:var(--amber);}
+  .pill.brick{background:var(--brick-dim);color:var(--brick);}
+
+  .note-box{
+    border-left:3px solid var(--amber);background:var(--amber-dim);border-radius:0 6px 6px 0;
+    padding:14px 18px;font-size:13px;color:var(--text-mid);line-height:1.6;margin-top:4px;
+  }
+  .note-box.brick{border-color:var(--brick);background:var(--brick-dim);}
+  .note-box.green{border-color:var(--green);background:var(--green-dim);}
+  .note-box b{color:var(--text-hi);}
+
+  footer{
+    max-width:1320px;margin:0 auto;padding:0 32px 60px;color:var(--text-low);font-size:12px;line-height:1.7;
+  }
+  footer p{max-width:760px;}
+
+  .empty-state{color:var(--text-low);font-size:13.5px;padding:30px 0;text-align:center;}
+
+  .vis-hidden{display:none !important;}
+
+  /* scrollbars (subtle) */
+  ::-webkit-scrollbar{height:8px;width:8px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:4px;}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-row">
+    <div class="brand">
+      <a href="../index.html" style="font-family:var(--mono);font-size:12px;color:var(--text-low);text-decoration:none;border:1px solid var(--line);padding:4px 9px;border-radius:4px;margin-right:8px;transition:color .15s ease, border-color .15s ease;" onmouseover="this.style.color='#D08A3E';this.style.borderColor='#D08A3E';" onmouseout="this.style.color='';this.style.borderColor='';">← Workshop</a>
+      <span class="brand-mark">Ledger No. 01</span>
+    </div>
+    <div class="meta-date" id="todayDate"></div>
+  </div>
+  <h1>Runway</h1>
+  <p class="tagline">A retirement sufficiency calculator. Enter your numbers once on the ledger at left, then run a straight-line projection or a Monte Carlo simulation built from 98 years of actual S&amp;P 500 total returns — to see whether your savings outlast your spending, not just whether the average says they should.</p>
+</header>
+
+<main class="layout">
+
+  <!-- ============ LEDGER / INPUTS ============ -->
+  <section class="ledger">
+    <p class="ledger-title">The Ledger <span class="num">001</span></p>
+
+    <div class="field">
+      <label>Current portfolio balance <span class="hint">today, all accounts</span></label>
+      <div class="input-wrap">
+        <span class="prefix">$</span>
+        <input type="number" id="balance" class="has-prefix" value="1000000" min="0" step="1000">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Current age</label>
+      <div class="input-wrap"><input type="number" id="currentAge" value="50" min="18" max="100" step="1"></div>
+    </div>
+
+    <div class="field">
+      <label>Retirement age <span class="hint" id="yearsToRetireHint">in 15 yrs</span></label>
+      <div class="input-wrap"><input type="number" id="retireAge" value="65" min="18" max="100" step="1"></div>
+    </div>
+
+    <div class="field">
+      <label>Plan until age <span class="hint" id="yearsInRetirementHint">30 yrs in retirement</span></label>
+      <div class="input-wrap"><input type="number" id="endAge" value="95" min="50" max="120" step="1"></div>
+    </div>
+
+    <div class="divider-row">
+      <span class="num">2</span><span class="lbl">Spending &amp; Saving</span><span class="rule"></span>
+    </div>
+
+    <div class="field">
+      <label>Current monthly spend <span class="hint">today's dollars</span></label>
+      <div class="input-wrap">
+        <span class="prefix">$</span>
+        <input type="number" id="monthlySpend" class="has-prefix" value="6000" min="0" step="100">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Monthly contribution <span class="hint">while still working</span></label>
+      <div class="input-wrap">
+        <span class="prefix">$</span>
+        <input type="number" id="monthlyContribution" class="has-prefix" value="2000" min="0" step="100">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Spending in retirement</label>
+      <div class="toggle-group" id="spendModeToggle">
+        <button class="toggle-btn active" data-val="same">Same lifestyle</button>
+        <button class="toggle-btn" data-val="custom">Custom %</button>
+      </div>
+      <div id="spendPctWrap" class="vis-hidden" style="margin-top:10px;">
+        <div class="slider-row">
+          <input type="range" id="spendPct" min="40" max="150" value="80" step="5">
+          <span class="slider-val" id="spendPctVal">80%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Other retirement income <span class="hint">SS/pension, monthly</span></label>
+      <div class="input-wrap">
+        <span class="prefix">$</span>
+        <input type="number" id="otherIncome" class="has-prefix" value="0" min="0" step="100">
+      </div>
+    </div>
+
+    <div class="divider-row">
+      <span class="num">3</span><span class="lbl">Market Assumptions</span><span class="rule"></span>
+    </div>
+
+    <div class="field">
+      <label>Expected growth (CAGR) <span class="hint" id="cagrHint">nominal, pre-retirement</span></label>
+      <div class="slider-row">
+        <input type="range" id="cagr" min="0" max="14" value="7" step="0.25">
+        <span class="slider-val" id="cagrVal">7.0%</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Expected growth in retirement <span class="hint">often lower-risk mix</span></label>
+      <div class="slider-row">
+        <input type="range" id="cagrRetire" min="0" max="14" value="5.5" step="0.25">
+        <span class="slider-val" id="cagrRetireVal">5.5%</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Future inflation</label>
+      <div class="slider-row">
+        <input type="range" id="inflation" min="0" max="8" value="3" step="0.1">
+        <span class="slider-val" id="inflationVal">3.0%</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Investment fees / expense ratio</label>
+      <div class="slider-row">
+        <input type="range" id="fees" min="0" max="2" value="0.2" step="0.05">
+        <span class="slider-val" id="feesVal">0.20%</span>
+      </div>
+    </div>
+
+    <div class="divider-row">
+      <span class="num">4</span><span class="lbl">Method</span><span class="rule"></span>
+    </div>
+
+    <div class="field">
+      <label>Calculation method</label>
+      <div class="toggle-group" id="methodToggle">
+        <button class="toggle-btn active" data-val="deterministic">Straight-line</button>
+        <button class="toggle-btn" data-val="montecarlo">Monte Carlo</button>
+      </div>
+    </div>
+
+    <div id="mcSettings" class="mc-settings vis-hidden">
+      <div class="field">
+        <label>Return source <span class="hint">1926–2025 actual</span></label>
+        <select id="mcMode">
+          <option value="bootstrap">Random historical years (bootstrap)</option>
+          <option value="blocks">Historical sequences (block resample)</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:14px;">
+        <label>Simulations to run</label>
+        <div class="slider-row">
+          <input type="range" id="mcRuns" min="200" max="5000" value="2000" step="100">
+          <span class="slider-val" id="mcRunsVal">2000</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="run-btn" id="runBtn">Calculate runway</button>
+    <p class="run-note">Straight-line projection runs instantly. Monte Carlo runs entirely in your browser — nothing you enter is sent anywhere.</p>
+  </section>
+
+  <!-- ============ RESULTS ============ -->
+  <section class="results" id="results">
+    <div class="hero-card">
+      <div class="hero-figure">
+        <span class="hero-eyebrow">Verdict</span>
+        <span class="hero-number" id="heroNumber">—</span>
+        <span class="hero-sub" id="heroSub">Enter your numbers and calculate to see your runway.</span>
+      </div>
+      <div class="hero-divider"></div>
+      <div class="hero-stats">
+        <div class="hstat"><div class="v" id="statDepleteAge">—</div><div class="l">Balance hits zero at age</div></div>
+        <div class="hstat"><div class="v" id="statEndBalance">—</div><div class="l">Balance at plan end</div></div>
+        <div class="hstat"><div class="v" id="statYearsCovered">—</div><div class="l">Years funded of plan</div></div>
+        <div class="hstat"><div class="v" id="statFirstSpend">—</div><div class="l">First-year retirement spend</div></div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-head">
+        <h2 id="chartTitle">Portfolio path</h2>
+        <span class="sub" id="chartSub">Real (inflation-adjusted) balance, age 50 → 95</span>
+      </div>
+      <div class="chart-wrap" id="chartWrap">
+        <div class="empty-state">Run a calculation to see the projection.</div>
+      </div>
+      <div class="legend" id="chartLegend"></div>
+    </div>
+
+    <div class="panel-card vis-hidden" id="mcDetailCard">
+      <div class="panel-head">
+        <h2>Outcome by simulation</h2>
+        <span class="sub" id="mcSummarySub">—</span>
+      </div>
+      <div id="mcNoteBox"></div>
+      <div style="height:18px;"></div>
+      <table class="data-table" id="percentileTable">
+        <thead>
+          <tr><th>Outcome</th><th>Ending balance (real $)</th><th>Years until depleted</th><th>Result</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-head">
+        <h2>Year-by-year ledger</h2>
+        <span class="sub">Median path, real dollars</span>
+      </div>
+      <div class="chart-wrap" style="max-height:420px;overflow-y:auto;">
+        <table class="data-table" id="yearTable">
+          <thead>
+            <tr><th>Age</th><th>Year</th><th>Phase</th><th>Spend</th><th>Contribution</th><th>Growth</th><th>Balance</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p><b style="color:var(--text-mid);">About the numbers.</b> The straight-line model compounds your balance at a single assumed rate every year — it shows what happens if returns were perfectly smooth. The Monte Carlo model instead draws from 100 actual calendar-year S&amp;P 500 total returns (1926–2025, dividends reinvested, source: S&amp;P 500 historical return series) to build thousands of possible futures, so it captures the bad years along with the good. Both models adjust spending for your inflation assumption and report results in today's purchasing power.</p>
+  <p><b style="color:var(--text-mid);">Why Monte Carlo numbers often run higher.</b> A single "expected CAGR" like 7% is usually a deliberately conservative planning assumption. The actual 1926–2025 record compounded faster than that — so simulations built from real history can show larger and more volatile outcomes than the straight-line model, in both directions. Lower your growth assumption or shorten the historical window if you want the two methods to align more closely.</p>
+  <p>This tool is for education and planning intuition only — it is not financial advice, and past market returns do not guarantee future results.</p>
+</footer>
+
+<script>
+/* ============================================================
+   S&P 500 ANNUAL TOTAL RETURNS, 1926–2025 (dividends reinvested)
+   Source: S&P 500 historical total return series
+   ============================================================ */
+const SP500_RETURNS = [
+  11.62, 37.49, 43.61, -8.42, -24.90, -43.34, -8.19, 53.99, -1.44, 47.67,
+  33.92, -35.03, 31.12, -0.41, -9.78, -11.59, 20.34, 25.90, 19.75, 36.44,
+  -8.07, 5.71, 5.50, 18.79, 31.71, 24.02, 18.37, -0.99, 52.62, 31.56,
+  6.56, -10.78, 43.36, 11.96, 0.47, 26.89, -8.73, 22.80, 16.48, 12.45,
+  -10.06, 23.98, 11.06, -8.50, 4.01, 14.31, 18.98, -14.66, -26.47, 37.20,
+  23.84, -7.18, 6.56, 18.44, 32.42, -4.91, 21.55, 22.56, 6.27, 31.73,
+  18.67, 5.25, 16.61, 31.69, -3.10, 30.47, 7.62, 10.08, 1.32, 37.58,
+  22.96, 33.36, 28.58, 21.04, -9.10, -11.89, -22.10, 28.68, 10.88, 4.91,
+  15.79, 5.49, -37.00, 26.46, 15.06, 2.11, 16.00, 32.39, 13.69, 1.38,
+  11.96, 21.83, -4.38, 31.49, 18.40, 28.71, -18.11, 26.29, 25.02, 17.88
+].map(x => x / 100);
+
+/* ---------------- DOM refs ---------------- */
+const $ = id => document.getElementById(id);
+const fmtMoney = (v, decimals=0) => {
+  const sign = v < 0 ? '-' : '';
+  v = Math.abs(v);
+  return sign + '$' + v.toLocaleString('en-US', {maximumFractionDigits: decimals, minimumFractionDigits: decimals});
+};
+const fmtMoneyShort = (v) => {
+  const sign = v < 0 ? '-' : '';
+  v = Math.abs(v);
+  if (v >= 1e6) return sign + '$' + (v/1e6).toFixed(2) + 'M';
+  if (v >= 1e3) return sign + '$' + (v/1e3).toFixed(0) + 'k';
+  return sign + '$' + v.toFixed(0);
+};
+
+$('todayDate').textContent = new Date().toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
+
+/* ---------------- Slider live-value bindings ---------------- */
+function bindSlider(sliderId, valId, suffix, decimals){
+  const el = $(sliderId), out = $(valId);
+  const update = () => out.textContent = parseFloat(el.value).toFixed(decimals) + suffix;
+  el.addEventListener('input', update);
+  update();
+}
+bindSlider('cagr','cagrVal','%',1);
+bindSlider('cagrRetire','cagrRetireVal','%',1);
+bindSlider('inflation','inflationVal','%',1);
+bindSlider('fees','feesVal','%',2);
+bindSlider('spendPct','spendPctVal','%',0);
+bindSlider('mcRuns','mcRunsVal','',0);
+$('mcRuns').addEventListener('input', () => $('mcRunsVal').textContent = parseInt($('mcRuns').value).toLocaleString());
+$('mcRunsVal').textContent = parseInt($('mcRuns').value).toLocaleString();
+
+/* ---------------- Toggle groups ---------------- */
+function setupToggle(groupId, onChange){
+  const group = $(groupId);
+  const btns = group.querySelectorAll('.toggle-btn');
+  btns.forEach(b => b.addEventListener('click', () => {
+    btns.forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    onChange(b.dataset.val);
+  }));
+}
+let spendMode = 'same';
+setupToggle('spendModeToggle', (val) => {
+  spendMode = val;
+  $('spendPctWrap').classList.toggle('vis-hidden', val !== 'custom');
+});
+let method = 'deterministic';
+setupToggle('methodToggle', (val) => {
+  method = val;
+  $('mcSettings').classList.toggle('vis-hidden', val !== 'montecarlo');
+  $('runBtn').textContent = val === 'montecarlo' ? 'Run Monte Carlo simulation' : 'Calculate runway';
+});
+
+/* ---------------- Age hints ---------------- */
+function updateHints(){
+  const cur = parseInt($('currentAge').value)||0;
+  const ret = parseInt($('retireAge').value)||0;
+  const end = parseInt($('endAge').value)||0;
+  $('yearsToRetireHint').textContent = `in ${Math.max(ret-cur,0)} yrs`;
+  $('yearsInRetirementHint').textContent = `${Math.max(end-ret,0)} yrs in retirement`;
+}
+['currentAge','retireAge','endAge'].forEach(id => $(id).addEventListener('input', updateHints));
+updateHints();
+
+/* ============================================================
+   CORE PROJECTION ENGINE
+   Works in REAL (inflation-adjusted, today's-dollar) terms throughout,
+   so a constant real monthly spend = "same lifestyle".
+   ============================================================ */
+function getInputs(){
+  const currentAge = parseInt($('currentAge').value);
+  const retireAge = parseInt($('retireAge').value);
+  const endAge = parseInt($('endAge').value);
+  const balance = parseFloat($('balance').value)||0;
+  const monthlySpendToday = parseFloat($('monthlySpend').value)||0;
+  const monthlyContribution = parseFloat($('monthlyContribution').value)||0;
+  const otherIncomeMonthly = parseFloat($('otherIncome').value)||0;
+  const cagrPre = parseFloat($('cagr').value)/100;
+  const cagrPost = parseFloat($('cagrRetire').value)/100;
+  const inflation = parseFloat($('inflation').value)/100;
+  const fees = parseFloat($('fees').value)/100;
+  const spendPct = spendMode === 'custom' ? parseFloat($('spendPct').value)/100 : 1.0;
+
+  return {currentAge, retireAge, endAge, balance, monthlySpendToday, monthlyContribution,
+          otherIncomeMonthly, cagrPre, cagrPost, inflation, fees, spendPct};
+}
+
+// Real (inflation-adjusted) nominal->real rate of return for a given nominal annual return r and inflation i
+function realRate(nominalAnnual, inflationAnnual){
+  return (1+nominalAnnual)/(1+inflationAnnual) - 1;
+}
+
+/**
+ * Run a single deterministic or stochastic path.
+ * yearlyReturns: optional array of nominal annual returns to use for each year (for Monte Carlo).
+ *                 If absent, uses cagrPre/cagrPost flatly (straight-line mode).
+ * Returns: {rows: [...], depletedAtAge: number|null, endBalance: number}
+ * All money values returned are in REAL (today's purchasing power) terms.
+ */
+function runPath(inputs, yearlyReturns){
+  const {currentAge, retireAge, endAge, balance, monthlySpendToday, monthlyContribution,
+         otherIncomeMonthly, cagrPre, cagrPost, inflation, fees, spendPct} = inputs;
+
+  let bal = balance; // real terms (today's dollars), since we start "today"
+  const rows = [];
+  let depletedAtAge = null;
+  const totalYears = endAge - currentAge;
+  const retirementSpendMonthly = monthlySpendToday * spendPct;
+
+  for (let i = 0; i < totalYears; i++){
+    const age = currentAge + i;
+    const isRetired = age >= retireAge;
+    const year = new Date().getFullYear() + i;
+
+    // nominal annual return for this year
+    let nominalReturn;
+    if (yearlyReturns && yearlyReturns.length){
+      nominalReturn = yearlyReturns[i % yearlyReturns.length];
+    } else {
+      nominalReturn = isRetired ? cagrPost : cagrPre;
+    }
+    // convert to real return, net of fees
+    let rReal = realRate(nominalReturn - fees, inflation);
+
+    const annualContribution = isRetired ? 0 : monthlyContribution * 12;
+    const annualSpend = isRetired ? retirementSpendMonthly * 12 : 0;
+    const annualOtherIncome = isRetired ? otherIncomeMonthly * 12 : 0;
+    const netSpend = Math.max(annualSpend - annualOtherIncome, 0);
+
+    const startBal = bal;
+    // Apply contributions/withdrawals at start of year (conservative), then growth
+    let midBal = startBal + annualContribution - netSpend;
+    let growth = midBal * rReal;
+    let endBal = midBal + growth;
+
+    if (endBal < 0){ endBal = 0; }
+    if (depletedAtAge === null && endBal <= 0 && isRetired){
+      depletedAtAge = age + 1;
+    }
+
+    rows.push({
+      age, year, phase: isRetired ? 'Retired' : 'Working',
+      spend: netSpend, contribution: annualContribution, growth, balance: endBal, startBal
+    });
+    bal = endBal;
+    if (bal <= 0) bal = 0;
+  }
+
+  return {rows, depletedAtAge, endBalance: bal};
+}
+
+/* ============================================================
+   DETERMINISTIC RUN
+   ============================================================ */
+function runDeterministic(){
+  const inputs = getInputs();
+  const result = runPath(inputs, null);
+  renderHero(result, inputs, 'deterministic');
+  renderChartDeterministic(result, inputs);
+  renderYearTable(result.rows);
+  $('mcDetailCard').classList.add('vis-hidden');
+}
+
+/* ============================================================
+   MONTE CARLO ENGINE
+   ============================================================ */
+function sampleBootstrapYears(n){
+  const out = [];
+  for (let i=0;i<n;i++){
+    out.push(SP500_RETURNS[Math.floor(Math.random()*SP500_RETURNS.length)]);
+  }
+  return out;
+}
+// Block resample: pick a random contiguous run from history, wrap around if needed, to preserve sequencing/autocorrelation
+function sampleBlockYears(n){
+  const L = SP500_RETURNS.length;
+  const startIdx = Math.floor(Math.random()*L);
+  const out = [];
+  for (let i=0;i<n;i++){
+    out.push(SP500_RETURNS[(startIdx+i) % L]);
+  }
+  return out;
+}
+
+function runMonteCarlo(){
+  const inputs = getInputs();
+  const runs = parseInt($('mcRuns').value);
+  const mode = $('mcMode').value;
+  const totalYears = inputs.endAge - inputs.currentAge;
+
+  const allResults = [];
+  const allRowSets = [];
+
+  for (let s=0; s<runs; s++){
+    const yearlyReturns = mode === 'blocks' ? sampleBlockYears(totalYears) : sampleBootstrapYears(totalYears);
+    const result = runPath(inputs, yearlyReturns);
+    allResults.push(result);
+    allRowSets.push(result.rows);
+  }
+
+  // Success = never depleted before endAge (or depletedAtAge is null)
+  const successes = allResults.filter(r => r.depletedAtAge === null).length;
+  const successRate = successes / runs;
+
+  // Build per-year balance distributions across all sims for fan chart
+  const perYearBalances = []; // perYearBalances[i] = sorted array of balances at year i across sims
+  for (let i=0;i<totalYears;i++){
+    const vals = allRowSets.map(rows => rows[i].balance);
+    vals.sort((a,b)=>a-b);
+    perYearBalances.push(vals);
+  }
+
+  // Ending balances sorted for percentile table
+  const endBalances = allResults.map(r => r.endBalance).sort((a,b)=>a-b);
+  const depleteAges = allResults.map(r => r.depletedAtAge);
+
+  function pct(arr, p){
+    const idx = Math.floor(p*(arr.length-1));
+    return arr[idx];
+  }
+
+  renderHeroMC(successRate, allResults, inputs);
+  renderChartMC(perYearBalances, inputs, mode, runs);
+  renderMCTable(allResults, inputs, runs);
+
+  // median path for year-by-year table: use the run whose end balance is closest to median
+  const medianEnd = pct(endBalances, 0.5);
+  let closestIdx = 0, closestDiff = Infinity;
+  allResults.forEach((r,idx) => {
+    const diff = Math.abs(r.endBalance - medianEnd);
+    if (diff < closestDiff){ closestDiff = diff; closestIdx = idx; }
+  });
+  renderYearTable(allRowSets[closestIdx]);
+
+  $('mcDetailCard').classList.remove('vis-hidden');
+}
+
+/* ============================================================
+   RENDERING — HERO
+   ============================================================ */
+function classify(successRate){
+  if (successRate >= 0.85) return 'success';
+  if (successRate >= 0.6) return 'caution';
+  return 'danger';
+}
+
+function renderHero(result, inputs, modeLabel){
+  const heroEl = $('heroNumber'), subEl = $('heroSub');
+  const depleted = result.depletedAtAge !== null;
+  const planLength = inputs.endAge - inputs.retireAge;
+
+  if (!depleted){
+    heroEl.textContent = 'Sufficient';
+    heroEl.className = 'hero-number success';
+    subEl.textContent = `Your portfolio is projected to last through age ${inputs.endAge} under a steady ${($('cagr').value)}% / ${($('cagrRetire').value)}% growth assumption.`;
+  } else {
+    heroEl.textContent = 'Falls Short';
+    heroEl.className = 'hero-number danger';
+    subEl.textContent = `Your portfolio is projected to run out at age ${result.depletedAtAge}, ${inputs.endAge - result.depletedAtAge} years before your plan ends.`;
+  }
+
+  $('statDepleteAge').textContent = depleted ? result.depletedAtAge : `${inputs.endAge}+`;
+  $('statEndBalance').textContent = fmtMoneyShort(result.endBalance);
+  const yearsCovered = depleted ? (result.depletedAtAge - inputs.retireAge) : planLength;
+  $('statYearsCovered').textContent = `${Math.max(yearsCovered,0)} / ${planLength}`;
+  const firstRetiredRow = result.rows.find(r => r.phase === 'Retired');
+  $('statFirstSpend').textContent = firstRetiredRow ? fmtMoneyShort(firstRetiredRow.spend) + '/yr' : '—';
+}
+
+function renderHeroMC(successRate, allResults, inputs){
+  const heroEl = $('heroNumber'), subEl = $('heroSub');
+  const cls = classify(successRate);
+  const pctDisplay = (successRate*100).toFixed(1).replace(/\.0$/,'') + '%';
+
+  heroEl.textContent = pctDisplay;
+  heroEl.className = 'hero-number ' + cls;
+
+  const failures = allResults.filter(r => r.depletedAtAge !== null);
+  let subtext;
+  if (cls === 'success'){
+    subtext = `Across simulated histories drawn from real S&P 500 years, your portfolio survived to age ${inputs.endAge} in ${pctDisplay} of outcomes.`;
+  } else if (cls === 'caution'){
+    subtext = `${pctDisplay} of simulated histories made it to age ${inputs.endAge}. In the rest, money ran out — worth tightening your plan.`;
+  } else {
+    subtext = `Only ${pctDisplay} of simulated histories lasted to age ${inputs.endAge}. This plan is fragile to real-world sequences of returns.`;
+  }
+  subEl.textContent = subtext;
+
+  const endBalances = allResults.map(r => r.endBalance).sort((a,b)=>a-b);
+  const median = endBalances[Math.floor(endBalances.length/2)];
+  $('statEndBalance').textContent = fmtMoneyShort(median);
+  $('statEndBalance').nextElementSibling.textContent = 'Median balance at plan end';
+
+  if (failures.length){
+    const avgDeplete = Math.round(failures.reduce((s,r)=>s+r.depletedAtAge,0)/failures.length);
+    $('statDepleteAge').textContent = avgDeplete;
+  } else {
+    $('statDepleteAge').textContent = `${inputs.endAge}+`;
+  }
+  $('statDepleteAge').nextElementSibling.textContent = failures.length ? 'Avg. depletion age (failures)' : 'Balance hits zero at age';
+
+  const planLength = inputs.endAge - inputs.retireAge;
+  $('statYearsCovered').textContent = `${(successRate*100).toFixed(0)}%`;
+  $('statYearsCovered').nextElementSibling.textContent = 'Simulations fully funded';
+
+  const monthlySpendToday = inputs.monthlySpendToday * inputs.spendPct;
+  $('statFirstSpend').textContent = fmtMoneyShort(monthlySpendToday*12) + '/yr';
+  $('statFirstSpend').nextElementSibling.textContent = 'First-year retirement spend';
+}
+
+/* ============================================================
+   RENDERING — CHARTS (hand-built SVG, no deps)
+   ============================================================ */
+const CHART_W = 1000, CHART_H = 420;
+const MARGIN = {top: 20, right: 24, bottom: 36, left: 64};
+
+function chartScales(xDomain, yDomain){
+  const plotW = CHART_W - MARGIN.left - MARGIN.right;
+  const plotH = CHART_H - MARGIN.top - MARGIN.bottom;
+  const x = (v) => MARGIN.left + ((v - xDomain[0])/(xDomain[1]-xDomain[0])) * plotW;
+  const y = (v) => MARGIN.top + plotH - ((v - yDomain[0])/(yDomain[1]-yDomain[0])) * plotH;
+  return {x, y, plotW, plotH};
+}
+
+function buildAxesSVG(xDomain, yDomain, xTickFn, yTickFn, xLabel){
+  const {x, y, plotW, plotH} = chartScales(xDomain, yDomain);
+  let svg = '';
+
+  // horizontal gridlines + y labels
+  const yTickCount = 5;
+  for (let i=0;i<=yTickCount;i++){
+    const val = yDomain[0] + (yDomain[1]-yDomain[0]) * (i/yTickCount);
+    const yy = y(val);
+    svg += `<line x1="${MARGIN.left}" y1="${yy}" x2="${CHART_W-MARGIN.right}" y2="${yy}" stroke="rgba(245,241,232,0.08)" stroke-width="1"/>`;
+    svg += `<text x="${MARGIN.left-10}" y="${yy+4}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="rgba(245,241,232,0.46)">${yTickFn(val)}</text>`;
+  }
+
+  // zero line emphasized if in range
+  if (yDomain[0] <= 0 && yDomain[1] >= 0){
+    const yy = y(0);
+    svg += `<line x1="${MARGIN.left}" y1="${yy}" x2="${CHART_W-MARGIN.right}" y2="${yy}" stroke="rgba(177,77,54,0.55)" stroke-width="1.4" stroke-dasharray="4,3"/>`;
+  }
+
+  // x ticks
+  const xTickCount = Math.min(10, xDomain[1]-xDomain[0]);
+  for (let i=0;i<=xTickCount;i++){
+    const val = Math.round(xDomain[0] + (xDomain[1]-xDomain[0]) * (i/xTickCount));
+    const xx = x(val);
+    svg += `<text x="${xx}" y="${CHART_H-MARGIN.bottom+20}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="rgba(245,241,232,0.46)">${xTickFn(val)}</text>`;
+  }
+  svg += `<text x="${MARGIN.left + plotW/2}" y="${CHART_H-4}" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="rgba(245,241,232,0.36)">${xLabel}</text>`;
+
+  // axis lines
+  svg += `<line x1="${MARGIN.left}" y1="${MARGIN.top}" x2="${MARGIN.left}" y2="${CHART_H-MARGIN.bottom}" stroke="rgba(245,241,232,0.2)" stroke-width="1"/>`;
+  svg += `<line x1="${MARGIN.left}" y1="${CHART_H-MARGIN.bottom}" x2="${CHART_W-MARGIN.right}" y2="${CHART_H-MARGIN.bottom}" stroke="rgba(245,241,232,0.2)" stroke-width="1"/>`;
+
+  return svg;
+}
+
+function renderChartDeterministic(result, inputs){
+  const rows = result.rows;
+  const ages = rows.map(r => r.age);
+  const balances = rows.map(r => r.balance);
+  const xDomain = [inputs.currentAge, inputs.endAge];
+  let maxBal = Math.max(...balances, inputs.balance) * 1.1;
+  if (maxBal <= 0) maxBal = inputs.balance * 1.1 || 1000;
+  const yDomain = [0, maxBal];
+  const {x, y} = chartScales(xDomain, yDomain);
+
+  let path = '';
+  rows.forEach((r,i) => {
+    const cmd = i===0 ? 'M' : 'L';
+    path += `${cmd}${x(r.age).toFixed(1)},${y(Math.max(r.balance,0)).toFixed(1)} `;
+  });
+  // area fill
+  let area = path + `L${x(rows[rows.length-1].age).toFixed(1)},${y(0).toFixed(1)} L${x(rows[0].age).toFixed(1)},${y(0).toFixed(1)} Z`;
+
+  const retireX = x(inputs.retireAge);
+  const lineColor = result.depletedAtAge ? 'var(--brick)' : 'var(--green)';
+  const lineColorHex = result.depletedAtAge ? '#B14D36' : '#4C9A73';
+
+  let svg = `<svg class="chart" viewBox="0 0 ${CHART_W} ${CHART_H}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += buildAxesSVG(xDomain, yDomain, v => 'Age '+v, v => fmtMoneyShort(v), 'Age');
+  // retirement marker
+  svg += `<line x1="${retireX}" y1="${MARGIN.top}" x2="${retireX}" y2="${CHART_H-MARGIN.bottom}" stroke="rgba(208,138,62,0.55)" stroke-width="1.3" stroke-dasharray="3,4"/>`;
+  svg += `<text x="${retireX+6}" y="${MARGIN.top+14}" font-family="Inter, sans-serif" font-size="11" fill="rgba(208,138,62,0.85)">Retirement</text>`;
+  svg += `<path d="${area}" fill="${lineColorHex}" opacity="0.12"/>`;
+  svg += `<path d="${path}" fill="none" stroke="${lineColorHex}" stroke-width="2.4"/>`;
+  svg += `</svg>`;
+
+  $('chartWrap').innerHTML = svg;
+  $('chartTitle').textContent = 'Portfolio path';
+  $('chartSub').textContent = `Real (inflation-adjusted) balance, age ${inputs.currentAge} → ${inputs.endAge}`;
+  $('chartLegend').innerHTML = `
+    <div class="legend-item"><span class="legend-swatch" style="background:${lineColorHex}"></span>Projected balance (today's $)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#D08A3E"></span>Retirement begins</div>
+  `;
+}
+
+function renderChartMC(perYearBalances, inputs, mode, runs){
+  const totalYears = perYearBalances.length;
+  const ages = Array.from({length: totalYears}, (_,i) => inputs.currentAge + i);
+  const xDomain = [inputs.currentAge, inputs.endAge - 1];
+
+  function pctOf(arr, p){
+    const idx = Math.min(arr.length-1, Math.floor(p*(arr.length-1)));
+    return arr[idx];
+  }
+  const p10 = perYearBalances.map(arr => pctOf(arr,0.10));
+  const p25 = perYearBalances.map(arr => pctOf(arr,0.25));
+  const p50 = perYearBalances.map(arr => pctOf(arr,0.50));
+  const p75 = perYearBalances.map(arr => pctOf(arr,0.75));
+  const p90 = perYearBalances.map(arr => pctOf(arr,0.90));
+
+  let maxBal = Math.max(...p90, inputs.balance) * 1.1;
+  if (maxBal <= 0) maxBal = inputs.balance*1.1 || 1000;
+  const yDomain = [0, maxBal];
+  const {x, y} = chartScales(xDomain, yDomain);
+
+  function lineFor(arr){
+    let d = '';
+    ages.forEach((age,i) => {
+      const cmd = i===0 ? 'M' : 'L';
+      d += `${cmd}${x(age).toFixed(1)},${y(Math.max(arr[i],0)).toFixed(1)} `;
+    });
+    return d;
+  }
+  function bandFor(lower, upper){
+    let d = '';
+    ages.forEach((age,i) => { d += (i===0?'M':'L') + `${x(age).toFixed(1)},${y(Math.max(upper[i],0)).toFixed(1)} `; });
+    for (let i=ages.length-1;i>=0;i--){ d += `L${x(ages[i]).toFixed(1)},${y(Math.max(lower[i],0)).toFixed(1)} `; }
+    d += 'Z';
+    return d;
+  }
+
+  const retireX = x(inputs.retireAge);
+
+  let svg = `<svg class="chart" viewBox="0 0 ${CHART_W} ${CHART_H}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += buildAxesSVG(xDomain, yDomain, v => 'Age '+v, v => fmtMoneyShort(v), 'Age');
+  svg += `<line x1="${retireX}" y1="${MARGIN.top}" x2="${retireX}" y2="${CHART_H-MARGIN.bottom}" stroke="rgba(208,138,62,0.55)" stroke-width="1.3" stroke-dasharray="3,4"/>`;
+  svg += `<text x="${retireX+6}" y="${MARGIN.top+14}" font-family="Inter, sans-serif" font-size="11" fill="rgba(208,138,62,0.85)">Retirement</text>`;
+
+  // 10-90 band
+  svg += `<path d="${bandFor(p10,p90)}" fill="#D08A3E" opacity="0.10"/>`;
+  // 25-75 band
+  svg += `<path d="${bandFor(p25,p75)}" fill="#D08A3E" opacity="0.18"/>`;
+  // median line
+  svg += `<path d="${lineFor(p50)}" fill="none" stroke="#F5F1E8" stroke-width="2.6"/>`;
+  // p10 line (risk edge)
+  svg += `<path d="${lineFor(p10)}" fill="none" stroke="#B14D36" stroke-width="1.6" stroke-dasharray="5,3" opacity="0.85"/>`;
+  // p90 line
+  svg += `<path d="${lineFor(p90)}" fill="none" stroke="#4C9A73" stroke-width="1.6" stroke-dasharray="5,3" opacity="0.85"/>`;
+
+  svg += `</svg>`;
+
+  $('chartWrap').innerHTML = svg;
+  $('chartTitle').textContent = 'Simulated outcome fan';
+  $('chartSub').textContent = `${runs.toLocaleString()} simulations · ${mode === 'blocks' ? 'historical sequences' : 'random historical years'} · real $`;
+  $('chartLegend').innerHTML = `
+    <div class="legend-item"><span class="legend-swatch" style="background:#F5F1E8"></span>Median outcome</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#4C9A73"></span>90th percentile (strong markets)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#B14D36"></span>10th percentile (weak markets)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:rgba(208,138,62,0.4)"></span>Middle 50% / 80% of outcomes</div>
+  `;
+}
+
+/* ============================================================
+   RENDERING — TABLES
+   ============================================================ */
+function renderYearTable(rows){
+  const tbody = document.querySelector('#yearTable tbody');
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.age}</td>
+      <td>${r.year}</td>
+      <td><span class="pill ${r.phase==='Working'?'green':'amber'}">${r.phase}</span></td>
+      <td>${r.spend ? fmtMoneyShort(r.spend) : '—'}</td>
+      <td>${r.contribution ? fmtMoneyShort(r.contribution) : '—'}</td>
+      <td style="color:${r.growth>=0?'#4C9A73':'#B14D36'}">${r.growth>=0?'+':''}${fmtMoneyShort(r.growth)}</td>
+      <td style="font-weight:600;color:${r.balance<=0?'#B14D36':'#F5F1E8'}">${fmtMoneyShort(r.balance)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderMCTable(allResults, inputs, runs){
+  const endBalances = allResults.map(r => r.endBalance);
+  const depleteAges = allResults.map(r => r.depletedAtAge);
+  const sortedIdx = endBalances.map((v,i)=>i).sort((a,b)=>endBalances[a]-endBalances[b]);
+
+  function pickPercentile(p, label){
+    const idx = sortedIdx[Math.min(sortedIdx.length-1, Math.floor(p*(sortedIdx.length-1)))];
+    const bal = endBalances[idx];
+    const depAge = depleteAges[idx];
+    const ok = depAge === null;
+    return {label, bal, depAge, ok};
+  }
+
+  const rowsData = [
+    pickPercentile(0.10, 'Worst 10% (bad sequence)'),
+    pickPercentile(0.25, '25th percentile'),
+    pickPercentile(0.50, 'Median outcome'),
+    pickPercentile(0.75, '75th percentile'),
+    pickPercentile(0.90, 'Best 10% (favorable sequence)'),
+  ];
+
+  const tbody = document.querySelector('#percentileTable tbody');
+  tbody.innerHTML = rowsData.map(r => `
+    <tr>
+      <td>${r.label}</td>
+      <td style="font-weight:600;color:${r.bal<=0?'#B14D36':'#F5F1E8'}">${fmtMoney(r.bal)}</td>
+      <td>${r.depAge ? (r.depAge - inputs.retireAge) + ' yrs' : `${inputs.endAge - inputs.retireAge}+ (full term)`}</td>
+      <td><span class="pill ${r.ok?'green':'brick'}">${r.ok?'Funded':'Depleted'}</span></td>
+    </tr>
+  `).join('');
+
+  const failures = allResults.filter(r => r.depletedAtAge !== null).length;
+  $('mcSummarySub').textContent = `${runs.toLocaleString()} simulated lifetimes · ${failures.toLocaleString()} ran out of money before age ${inputs.endAge}`;
+
+  const successRate = 1 - failures/runs;
+  const cls = classify(successRate);
+  let noteHTML;
+  if (cls === 'success'){
+    noteHTML = `<div class="note-box green"><b>Reading this result:</b> A ${(successRate*100).toFixed(0)}% success rate against actual historical S&P 500 sequences (including 2008, 1973–74, and the 1930s) suggests this plan has real margin. The straight-line model and the simulation are telling a similar story.</div>`;
+  } else if (cls === 'caution'){
+    noteHTML = `<div class="note-box"><b>Reading this result:</b> A meaningful share of historical sequences deplete this portfolio before age ${inputs.endAge}. The risk isn't the average return — it's a poor sequence of returns early in retirement. Consider a lower withdrawal rate, more flexible spending, or delaying retirement by a year or two.</div>`;
+  } else {
+    noteHTML = `<div class="note-box brick"><b>Reading this result:</b> Most historical sequences run this portfolio dry before age ${inputs.endAge}. The gap between this and the straight-line projection is the real lesson: a single average growth rate hides how much sequence-of-returns risk matters in early retirement.</div>`;
+  }
+  $('mcNoteBox').innerHTML = noteHTML;
+}
+
+/* ---------------- Run button ---------------- */
+$('runBtn').addEventListener('click', () => {
+  if (method === 'montecarlo'){
+    $('runBtn').textContent = 'Running…';
+    setTimeout(() => {
+      runMonteCarlo();
+      $('runBtn').textContent = 'Run Monte Carlo simulation';
+    }, 30);
+  } else {
+    runDeterministic();
+  }
+});
+
+// Initial render on load
+runDeterministic();
+</script>
+</body>
+</html>
