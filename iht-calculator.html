@@ -50,11 +50,42 @@
     background:var(--navy);
     background-image: linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
     color:#F1EEE6;
-    padding:28px 24px 24px;
+    padding:16px 24px 24px;
     border-bottom:4px solid var(--gold);
     position:relative;
     z-index:1;
   }
+
+  .back-row{
+    max-width:1180px;
+    margin:0 auto;
+    padding-bottom:14px;
+  }
+  .back-link{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    color:#D9C49C;
+    text-decoration:none;
+    font-size:0.82rem;
+    font-weight:600;
+    font-family:var(--sans);
+    padding:6px 12px 6px 8px;
+    border:1px solid rgba(217,196,156,0.35);
+    border-radius:999px;
+    background:rgba(255,255,255,0.04);
+    transition:background 0.15s, border-color 0.15s;
+  }
+  .back-link:hover{
+    background:rgba(255,255,255,0.09);
+    border-color:rgba(217,196,156,0.6);
+  }
+  .back-link:focus-visible{
+    outline:2px solid var(--gold-soft);
+    outline-offset:2px;
+  }
+  .back-link svg{flex-shrink:0;}
+
   .masthead-inner{
     max-width:1180px; margin:0 auto;
     display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;
@@ -179,6 +210,11 @@
     font-weight:600;
     color:var(--ink);
   }
+  label .currency-suffix{
+    font-family:var(--mono);
+    font-weight:700;
+    color:var(--ink-soft);
+  }
   .field .hint{
     font-size:0.76rem;
     color:var(--ink-soft);
@@ -189,20 +225,8 @@
   .money-input{
     position:relative;
   }
-  .money-input::before{
-    content:"£";
-    position:absolute;
-    left:13px; top:0; bottom:0;
-    display:flex;
-    align-items:center;
-    color:var(--ink-soft);
-    font-family:var(--sans);
-    font-size:0.95rem;
-    font-weight:600;
-    pointer-events:none;
-  }
   .money-input input{
-    padding-left:32px;
+    padding-left:12px;
   }
 
   input[type="text"],
@@ -565,6 +589,14 @@
 <a href="#estate-form" class="skip-link">Skip to calculator form</a>
 
 <header class="masthead">
+  <div class="back-row">
+    <a class="back-link" href="https://karthikn81.github.io/Karthiks-workshop/">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Back
+    </a>
+  </div>
   <div class="masthead-inner">
     <div class="masthead-crest">
       <svg class="crest-mark" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -627,13 +659,13 @@
 
         <div class="field-row">
           <div class="field">
-            <label for="houseValue">Main residence value</label>
+            <label for="houseValue">Main residence value (£)</label>
             <div class="money-input">
               <input type="text" id="houseValue" value="450,000" inputmode="numeric">
             </div>
           </div>
           <div class="field">
-            <label for="mortgage">Outstanding mortgage / secured debt</label>
+            <label for="mortgage">Outstanding mortgage / secured debt (£)</label>
             <div class="money-input">
               <input type="text" id="mortgage" value="0" inputmode="numeric">
             </div>
@@ -655,7 +687,7 @@
 
         <div class="field-row">
           <div class="field">
-            <label for="pensionValue">Unused defined-contribution pension balance</label>
+            <label for="pensionValue">Unused defined-contribution pension balance (£)</label>
             <div class="money-input">
               <input type="text" id="pensionValue" value="0" inputmode="numeric">
             </div>
@@ -677,13 +709,13 @@
 
         <div class="field-row">
           <div class="field">
-            <label for="savings">Savings, cash &amp; investments (ISAs, shares, bonds)</label>
+            <label for="savings">Savings, cash &amp; investments (ISAs, shares, bonds) (£)</label>
             <div class="money-input">
               <input type="text" id="savings" value="60,000" inputmode="numeric">
             </div>
           </div>
           <div class="field">
-            <label for="possessions">Other assets (car, jewellery, life policies not in trust, etc.)</label>
+            <label for="possessions">Other assets (car, jewellery, life policies not in trust, etc.) (£)</label>
             <div class="money-input">
               <input type="text" id="possessions" value="15,000" inputmode="numeric">
             </div>
@@ -692,13 +724,13 @@
 
         <div class="field-row">
           <div class="field">
-            <label for="debts">Other debts &amp; funeral costs</label>
+            <label for="debts">Other debts &amp; funeral costs (£)</label>
             <div class="money-input">
               <input type="text" id="debts" value="5,000" inputmode="numeric">
             </div>
           </div>
           <div class="field">
-            <label for="lifeInsuranceInTrust">Life insurance written in trust</label>
+            <label for="lifeInsuranceInTrust">Life insurance written in trust (£)</label>
             <div class="money-input">
               <input type="text" id="lifeInsuranceInTrust" value="0" inputmode="numeric">
             </div>
@@ -711,7 +743,7 @@
           <div class="advanced-body">
             <div class="field-row">
               <div class="field">
-                <label for="bpr">Qualifying business / agricultural property value</label>
+                <label for="bpr">Qualifying business / agricultural property value (£)</label>
                 <div class="money-input">
                   <input type="text" id="bpr" value="0" inputmode="numeric">
                 </div>
@@ -726,7 +758,7 @@
           <div class="advanced-body">
             <div class="field-row">
               <div class="field">
-                <label for="giftsValue">Total gifts given (excluding annual £3,000 exemptions)</label>
+                <label for="giftsValue">Total gifts given (excluding annual £3,000 exemptions) (£)</label>
                 <div class="money-input">
                   <input type="text" id="giftsValue" value="0" inputmode="numeric">
                 </div>
