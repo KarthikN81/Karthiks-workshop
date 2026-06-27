@@ -263,7 +263,7 @@
     <div class="field">
       <label>Current portfolio balance <span class="hint">today, all accounts</span></label>
       <div class="input-wrap">
-        <span class="prefix">$</span>
+        <span class="prefix">£</span>
         <input type="number" id="balance" class="has-prefix" value="1000000" min="0" step="1000">
       </div>
     </div>
@@ -290,7 +290,7 @@
     <div class="field">
       <label>Current monthly spend <span class="hint">today's dollars</span></label>
       <div class="input-wrap">
-        <span class="prefix">$</span>
+        <span class="prefix">£</span>
         <input type="number" id="monthlySpend" class="has-prefix" value="6000" min="0" step="100">
       </div>
     </div>
@@ -298,7 +298,7 @@
     <div class="field">
       <label>Monthly contribution <span class="hint">while still working</span></label>
       <div class="input-wrap">
-        <span class="prefix">$</span>
+        <span class="prefix">£</span>
         <input type="number" id="monthlyContribution" class="has-prefix" value="2000" min="0" step="100">
       </div>
     </div>
@@ -320,7 +320,7 @@
     <div class="field">
       <label>Other retirement income <span class="hint">SS/pension, monthly</span></label>
       <div class="input-wrap">
-        <span class="prefix">$</span>
+        <span class="prefix">£</span>
         <input type="number" id="otherIncome" class="has-prefix" value="0" min="0" step="100">
       </div>
     </div>
@@ -431,7 +431,7 @@
       <div style="height:18px;"></div>
       <table class="data-table" id="percentileTable">
         <thead>
-          <tr><th>Outcome</th><th>Ending balance (real $)</th><th>Years until depleted</th><th>Result</th></tr>
+          <tr><th>Outcome</th><th>Ending balance (real £)</th><th>Years until depleted</th><th>Result</th></tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -480,25 +480,25 @@ const SP500_RETURNS = [
 ].map(x => x / 100);
 
 /* ---------------- DOM refs ---------------- */
-const $ = id => document.getElementById(id);
+const £ = id => document.getElementById(id);
 const fmtMoney = (v, decimals=0) => {
   const sign = v < 0 ? '-' : '';
   v = Math.abs(v);
-  return sign + '$' + v.toLocaleString('en-US', {maximumFractionDigits: decimals, minimumFractionDigits: decimals});
+  return sign + '£' + v.toLocaleString('en-US', {maximumFractionDigits: decimals, minimumFractionDigits: decimals});
 };
 const fmtMoneyShort = (v) => {
   const sign = v < 0 ? '-' : '';
   v = Math.abs(v);
-  if (v >= 1e6) return sign + '$' + (v/1e6).toFixed(2) + 'M';
-  if (v >= 1e3) return sign + '$' + (v/1e3).toFixed(0) + 'k';
-  return sign + '$' + v.toFixed(0);
+  if (v >= 1e6) return sign + '£' + (v/1e6).toFixed(2) + 'M';
+  if (v >= 1e3) return sign + '£' + (v/1e3).toFixed(0) + 'k';
+  return sign + '£' + v.toFixed(0);
 };
 
-$('todayDate').textContent = new Date().toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
+£('todayDate').textContent = new Date().toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
 
 /* ---------------- Slider live-value bindings ---------------- */
 function bindSlider(sliderId, valId, suffix, decimals){
-  const el = $(sliderId), out = $(valId);
+  const el = £(sliderId), out = £(valId);
   const update = () => out.textContent = parseFloat(el.value).toFixed(decimals) + suffix;
   el.addEventListener('input', update);
   update();
@@ -509,12 +509,12 @@ bindSlider('inflation','inflationVal','%',1);
 bindSlider('fees','feesVal','%',2);
 bindSlider('spendPct','spendPctVal','%',0);
 bindSlider('mcRuns','mcRunsVal','',0);
-$('mcRuns').addEventListener('input', () => $('mcRunsVal').textContent = parseInt($('mcRuns').value).toLocaleString());
-$('mcRunsVal').textContent = parseInt($('mcRuns').value).toLocaleString();
+£('mcRuns').addEventListener('input', () => £('mcRunsVal').textContent = parseInt(£('mcRuns').value).toLocaleString());
+£('mcRunsVal').textContent = parseInt(£('mcRuns').value).toLocaleString();
 
 /* ---------------- Toggle groups ---------------- */
 function setupToggle(groupId, onChange){
-  const group = $(groupId);
+  const group = £(groupId);
   const btns = group.querySelectorAll('.toggle-btn');
   btns.forEach(b => b.addEventListener('click', () => {
     btns.forEach(x => x.classList.remove('active'));
@@ -525,24 +525,24 @@ function setupToggle(groupId, onChange){
 let spendMode = 'same';
 setupToggle('spendModeToggle', (val) => {
   spendMode = val;
-  $('spendPctWrap').classList.toggle('vis-hidden', val !== 'custom');
+  £('spendPctWrap').classList.toggle('vis-hidden', val !== 'custom');
 });
 let method = 'deterministic';
 setupToggle('methodToggle', (val) => {
   method = val;
-  $('mcSettings').classList.toggle('vis-hidden', val !== 'montecarlo');
-  $('runBtn').textContent = val === 'montecarlo' ? 'Run Monte Carlo simulation' : 'Calculate runway';
+  £('mcSettings').classList.toggle('vis-hidden', val !== 'montecarlo');
+  £('runBtn').textContent = val === 'montecarlo' ? 'Run Monte Carlo simulation' : 'Calculate runway';
 });
 
 /* ---------------- Age hints ---------------- */
 function updateHints(){
-  const cur = parseInt($('currentAge').value)||0;
-  const ret = parseInt($('retireAge').value)||0;
-  const end = parseInt($('endAge').value)||0;
-  $('yearsToRetireHint').textContent = `in ${Math.max(ret-cur,0)} yrs`;
-  $('yearsInRetirementHint').textContent = `${Math.max(end-ret,0)} yrs in retirement`;
+  const cur = parseInt(£('currentAge').value)||0;
+  const ret = parseInt(£('retireAge').value)||0;
+  const end = parseInt(£('endAge').value)||0;
+  £('yearsToRetireHint').textContent = `in £{Math.max(ret-cur,0)} yrs`;
+  £('yearsInRetirementHint').textContent = `£{Math.max(end-ret,0)} yrs in retirement`;
 }
-['currentAge','retireAge','endAge'].forEach(id => $(id).addEventListener('input', updateHints));
+['currentAge','retireAge','endAge'].forEach(id => £(id).addEventListener('input', updateHints));
 updateHints();
 
 /* ============================================================
@@ -551,18 +551,18 @@ updateHints();
    so a constant real monthly spend = "same lifestyle".
    ============================================================ */
 function getInputs(){
-  const currentAge = parseInt($('currentAge').value);
-  const retireAge = parseInt($('retireAge').value);
-  const endAge = parseInt($('endAge').value);
-  const balance = parseFloat($('balance').value)||0;
-  const monthlySpendToday = parseFloat($('monthlySpend').value)||0;
-  const monthlyContribution = parseFloat($('monthlyContribution').value)||0;
-  const otherIncomeMonthly = parseFloat($('otherIncome').value)||0;
-  const cagrPre = parseFloat($('cagr').value)/100;
-  const cagrPost = parseFloat($('cagrRetire').value)/100;
-  const inflation = parseFloat($('inflation').value)/100;
-  const fees = parseFloat($('fees').value)/100;
-  const spendPct = spendMode === 'custom' ? parseFloat($('spendPct').value)/100 : 1.0;
+  const currentAge = parseInt(£('currentAge').value);
+  const retireAge = parseInt(£('retireAge').value);
+  const endAge = parseInt(£('endAge').value);
+  const balance = parseFloat(£('balance').value)||0;
+  const monthlySpendToday = parseFloat(£('monthlySpend').value)||0;
+  const monthlyContribution = parseFloat(£('monthlyContribution').value)||0;
+  const otherIncomeMonthly = parseFloat(£('otherIncome').value)||0;
+  const cagrPre = parseFloat(£('cagr').value)/100;
+  const cagrPost = parseFloat(£('cagrRetire').value)/100;
+  const inflation = parseFloat(£('inflation').value)/100;
+  const fees = parseFloat(£('fees').value)/100;
+  const spendPct = spendMode === 'custom' ? parseFloat(£('spendPct').value)/100 : 1.0;
 
   return {currentAge, retireAge, endAge, balance, monthlySpendToday, monthlyContribution,
           otherIncomeMonthly, cagrPre, cagrPost, inflation, fees, spendPct};
@@ -641,7 +641,7 @@ function runDeterministic(){
   renderHero(result, inputs, 'deterministic');
   renderChartDeterministic(result, inputs);
   renderYearTable(result.rows);
-  $('mcDetailCard').classList.add('vis-hidden');
+  £('mcDetailCard').classList.add('vis-hidden');
 }
 
 /* ============================================================
@@ -667,8 +667,8 @@ function sampleBlockYears(n){
 
 function runMonteCarlo(){
   const inputs = getInputs();
-  const runs = parseInt($('mcRuns').value);
-  const mode = $('mcMode').value;
+  const runs = parseInt(£('mcRuns').value);
+  const mode = £('mcMode').value;
   const totalYears = inputs.endAge - inputs.currentAge;
 
   const allResults = [];
@@ -715,7 +715,7 @@ function runMonteCarlo(){
   });
   renderYearTable(allRowSets[closestIdx]);
 
-  $('mcDetailCard').classList.remove('vis-hidden');
+  £('mcDetailCard').classList.remove('vis-hidden');
 }
 
 /* ============================================================
@@ -728,32 +728,32 @@ function classify(successRate){
 }
 
 function renderHero(result, inputs, modeLabel){
-  const heroEl = $('heroNumber'), subEl = $('heroSub');
+  const heroEl = £('heroNumber'), subEl = £('heroSub');
   const depleted = result.depletedAtAge !== null;
   const planLength = inputs.endAge - inputs.retireAge;
 
   if (!depleted){
     heroEl.textContent = 'Sufficient';
     heroEl.className = 'hero-number success';
-    subEl.textContent = `Your portfolio is projected to last through age ${inputs.endAge} under a steady ${($('cagr').value)}% / ${($('cagrRetire').value)}% growth assumption.`;
+    subEl.textContent = `Your portfolio is projected to last through age £{inputs.endAge} under a steady £{(£('cagr').value)}% / £{(£('cagrRetire').value)}% growth assumption.`;
   } else {
     heroEl.textContent = 'Falls Short';
     heroEl.className = 'hero-number danger';
-    subEl.textContent = `Your portfolio is projected to run out at age ${result.depletedAtAge}, ${inputs.endAge - result.depletedAtAge} years before your plan ends.`;
+    subEl.textContent = `Your portfolio is projected to run out at age £{result.depletedAtAge}, £{inputs.endAge - result.depletedAtAge} years before your plan ends.`;
   }
 
-  $('statDepleteAge').textContent = depleted ? result.depletedAtAge : `${inputs.endAge}+`;
-  $('statEndBalance').textContent = fmtMoneyShort(result.endBalance);
+  £('statDepleteAge').textContent = depleted ? result.depletedAtAge : `£{inputs.endAge}+`;
+  £('statEndBalance').textContent = fmtMoneyShort(result.endBalance);
   const yearsCovered = depleted ? (result.depletedAtAge - inputs.retireAge) : planLength;
-  $('statYearsCovered').textContent = `${Math.max(yearsCovered,0)} / ${planLength}`;
+  £('statYearsCovered').textContent = `£{Math.max(yearsCovered,0)} / £{planLength}`;
   const firstRetiredRow = result.rows.find(r => r.phase === 'Retired');
-  $('statFirstSpend').textContent = firstRetiredRow ? fmtMoneyShort(firstRetiredRow.spend) + '/yr' : '—';
+  £('statFirstSpend').textContent = firstRetiredRow ? fmtMoneyShort(firstRetiredRow.spend) + '/yr' : '—';
 }
 
 function renderHeroMC(successRate, allResults, inputs){
-  const heroEl = $('heroNumber'), subEl = $('heroSub');
+  const heroEl = £('heroNumber'), subEl = £('heroSub');
   const cls = classify(successRate);
-  const pctDisplay = (successRate*100).toFixed(1).replace(/\.0$/,'') + '%';
+  const pctDisplay = (successRate*100).toFixed(1).replace(/\.0£/,'') + '%';
 
   heroEl.textContent = pctDisplay;
   heroEl.className = 'hero-number ' + cls;
@@ -761,34 +761,34 @@ function renderHeroMC(successRate, allResults, inputs){
   const failures = allResults.filter(r => r.depletedAtAge !== null);
   let subtext;
   if (cls === 'success'){
-    subtext = `Across simulated histories drawn from real S&P 500 years, your portfolio survived to age ${inputs.endAge} in ${pctDisplay} of outcomes.`;
+    subtext = `Across simulated histories drawn from real S&P 500 years, your portfolio survived to age £{inputs.endAge} in £{pctDisplay} of outcomes.`;
   } else if (cls === 'caution'){
-    subtext = `${pctDisplay} of simulated histories made it to age ${inputs.endAge}. In the rest, money ran out — worth tightening your plan.`;
+    subtext = `£{pctDisplay} of simulated histories made it to age £{inputs.endAge}. In the rest, money ran out — worth tightening your plan.`;
   } else {
-    subtext = `Only ${pctDisplay} of simulated histories lasted to age ${inputs.endAge}. This plan is fragile to real-world sequences of returns.`;
+    subtext = `Only £{pctDisplay} of simulated histories lasted to age £{inputs.endAge}. This plan is fragile to real-world sequences of returns.`;
   }
   subEl.textContent = subtext;
 
   const endBalances = allResults.map(r => r.endBalance).sort((a,b)=>a-b);
   const median = endBalances[Math.floor(endBalances.length/2)];
-  $('statEndBalance').textContent = fmtMoneyShort(median);
-  $('statEndBalance').nextElementSibling.textContent = 'Median balance at plan end';
+  £('statEndBalance').textContent = fmtMoneyShort(median);
+  £('statEndBalance').nextElementSibling.textContent = 'Median balance at plan end';
 
   if (failures.length){
     const avgDeplete = Math.round(failures.reduce((s,r)=>s+r.depletedAtAge,0)/failures.length);
-    $('statDepleteAge').textContent = avgDeplete;
+    £('statDepleteAge').textContent = avgDeplete;
   } else {
-    $('statDepleteAge').textContent = `${inputs.endAge}+`;
+    £('statDepleteAge').textContent = `£{inputs.endAge}+`;
   }
-  $('statDepleteAge').nextElementSibling.textContent = failures.length ? 'Avg. depletion age (failures)' : 'Balance hits zero at age';
+  £('statDepleteAge').nextElementSibling.textContent = failures.length ? 'Avg. depletion age (failures)' : 'Balance hits zero at age';
 
   const planLength = inputs.endAge - inputs.retireAge;
-  $('statYearsCovered').textContent = `${(successRate*100).toFixed(0)}%`;
-  $('statYearsCovered').nextElementSibling.textContent = 'Simulations fully funded';
+  £('statYearsCovered').textContent = `£{(successRate*100).toFixed(0)}%`;
+  £('statYearsCovered').nextElementSibling.textContent = 'Simulations fully funded';
 
   const monthlySpendToday = inputs.monthlySpendToday * inputs.spendPct;
-  $('statFirstSpend').textContent = fmtMoneyShort(monthlySpendToday*12) + '/yr';
-  $('statFirstSpend').nextElementSibling.textContent = 'First-year retirement spend';
+  £('statFirstSpend').textContent = fmtMoneyShort(monthlySpendToday*12) + '/yr';
+  £('statFirstSpend').nextElementSibling.textContent = 'First-year retirement spend';
 }
 
 /* ============================================================
@@ -814,14 +814,14 @@ function buildAxesSVG(xDomain, yDomain, xTickFn, yTickFn, xLabel){
   for (let i=0;i<=yTickCount;i++){
     const val = yDomain[0] + (yDomain[1]-yDomain[0]) * (i/yTickCount);
     const yy = y(val);
-    svg += `<line x1="${MARGIN.left}" y1="${yy}" x2="${CHART_W-MARGIN.right}" y2="${yy}" stroke="rgba(245,241,232,0.08)" stroke-width="1"/>`;
-    svg += `<text x="${MARGIN.left-10}" y="${yy+4}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="rgba(245,241,232,0.46)">${yTickFn(val)}</text>`;
+    svg += `<line x1="£{MARGIN.left}" y1="£{yy}" x2="£{CHART_W-MARGIN.right}" y2="£{yy}" stroke="rgba(245,241,232,0.08)" stroke-width="1"/>`;
+    svg += `<text x="£{MARGIN.left-10}" y="£{yy+4}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="rgba(245,241,232,0.46)">£{yTickFn(val)}</text>`;
   }
 
   // zero line emphasized if in range
   if (yDomain[0] <= 0 && yDomain[1] >= 0){
     const yy = y(0);
-    svg += `<line x1="${MARGIN.left}" y1="${yy}" x2="${CHART_W-MARGIN.right}" y2="${yy}" stroke="rgba(177,77,54,0.55)" stroke-width="1.4" stroke-dasharray="4,3"/>`;
+    svg += `<line x1="£{MARGIN.left}" y1="£{yy}" x2="£{CHART_W-MARGIN.right}" y2="£{yy}" stroke="rgba(177,77,54,0.55)" stroke-width="1.4" stroke-dasharray="4,3"/>`;
   }
 
   // x ticks
@@ -829,13 +829,13 @@ function buildAxesSVG(xDomain, yDomain, xTickFn, yTickFn, xLabel){
   for (let i=0;i<=xTickCount;i++){
     const val = Math.round(xDomain[0] + (xDomain[1]-xDomain[0]) * (i/xTickCount));
     const xx = x(val);
-    svg += `<text x="${xx}" y="${CHART_H-MARGIN.bottom+20}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="rgba(245,241,232,0.46)">${xTickFn(val)}</text>`;
+    svg += `<text x="£{xx}" y="£{CHART_H-MARGIN.bottom+20}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="rgba(245,241,232,0.46)">£{xTickFn(val)}</text>`;
   }
-  svg += `<text x="${MARGIN.left + plotW/2}" y="${CHART_H-4}" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="rgba(245,241,232,0.36)">${xLabel}</text>`;
+  svg += `<text x="£{MARGIN.left + plotW/2}" y="£{CHART_H-4}" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="rgba(245,241,232,0.36)">£{xLabel}</text>`;
 
   // axis lines
-  svg += `<line x1="${MARGIN.left}" y1="${MARGIN.top}" x2="${MARGIN.left}" y2="${CHART_H-MARGIN.bottom}" stroke="rgba(245,241,232,0.2)" stroke-width="1"/>`;
-  svg += `<line x1="${MARGIN.left}" y1="${CHART_H-MARGIN.bottom}" x2="${CHART_W-MARGIN.right}" y2="${CHART_H-MARGIN.bottom}" stroke="rgba(245,241,232,0.2)" stroke-width="1"/>`;
+  svg += `<line x1="£{MARGIN.left}" y1="£{MARGIN.top}" x2="£{MARGIN.left}" y2="£{CHART_H-MARGIN.bottom}" stroke="rgba(245,241,232,0.2)" stroke-width="1"/>`;
+  svg += `<line x1="£{MARGIN.left}" y1="£{CHART_H-MARGIN.bottom}" x2="£{CHART_W-MARGIN.right}" y2="£{CHART_H-MARGIN.bottom}" stroke="rgba(245,241,232,0.2)" stroke-width="1"/>`;
 
   return svg;
 }
@@ -853,29 +853,29 @@ function renderChartDeterministic(result, inputs){
   let path = '';
   rows.forEach((r,i) => {
     const cmd = i===0 ? 'M' : 'L';
-    path += `${cmd}${x(r.age).toFixed(1)},${y(Math.max(r.balance,0)).toFixed(1)} `;
+    path += `£{cmd}£{x(r.age).toFixed(1)},£{y(Math.max(r.balance,0)).toFixed(1)} `;
   });
   // area fill
-  let area = path + `L${x(rows[rows.length-1].age).toFixed(1)},${y(0).toFixed(1)} L${x(rows[0].age).toFixed(1)},${y(0).toFixed(1)} Z`;
+  let area = path + `L£{x(rows[rows.length-1].age).toFixed(1)},£{y(0).toFixed(1)} L£{x(rows[0].age).toFixed(1)},£{y(0).toFixed(1)} Z`;
 
   const retireX = x(inputs.retireAge);
   const lineColor = result.depletedAtAge ? 'var(--brick)' : 'var(--green)';
   const lineColorHex = result.depletedAtAge ? '#B14D36' : '#4C9A73';
 
-  let svg = `<svg class="chart" viewBox="0 0 ${CHART_W} ${CHART_H}" xmlns="http://www.w3.org/2000/svg">`;
+  let svg = `<svg class="chart" viewBox="0 0 £{CHART_W} £{CHART_H}" xmlns="http://www.w3.org/2000/svg">`;
   svg += buildAxesSVG(xDomain, yDomain, v => 'Age '+v, v => fmtMoneyShort(v), 'Age');
   // retirement marker
-  svg += `<line x1="${retireX}" y1="${MARGIN.top}" x2="${retireX}" y2="${CHART_H-MARGIN.bottom}" stroke="rgba(208,138,62,0.55)" stroke-width="1.3" stroke-dasharray="3,4"/>`;
-  svg += `<text x="${retireX+6}" y="${MARGIN.top+14}" font-family="Inter, sans-serif" font-size="11" fill="rgba(208,138,62,0.85)">Retirement</text>`;
-  svg += `<path d="${area}" fill="${lineColorHex}" opacity="0.12"/>`;
-  svg += `<path d="${path}" fill="none" stroke="${lineColorHex}" stroke-width="2.4"/>`;
+  svg += `<line x1="£{retireX}" y1="£{MARGIN.top}" x2="£{retireX}" y2="£{CHART_H-MARGIN.bottom}" stroke="rgba(208,138,62,0.55)" stroke-width="1.3" stroke-dasharray="3,4"/>`;
+  svg += `<text x="£{retireX+6}" y="£{MARGIN.top+14}" font-family="Inter, sans-serif" font-size="11" fill="rgba(208,138,62,0.85)">Retirement</text>`;
+  svg += `<path d="£{area}" fill="£{lineColorHex}" opacity="0.12"/>`;
+  svg += `<path d="£{path}" fill="none" stroke="£{lineColorHex}" stroke-width="2.4"/>`;
   svg += `</svg>`;
 
-  $('chartWrap').innerHTML = svg;
-  $('chartTitle').textContent = 'Portfolio path';
-  $('chartSub').textContent = `Real (inflation-adjusted) balance, age ${inputs.currentAge} → ${inputs.endAge}`;
-  $('chartLegend').innerHTML = `
-    <div class="legend-item"><span class="legend-swatch" style="background:${lineColorHex}"></span>Projected balance (today's $)</div>
+  £('chartWrap').innerHTML = svg;
+  £('chartTitle').textContent = 'Portfolio path';
+  £('chartSub').textContent = `Real (inflation-adjusted) balance, age £{inputs.currentAge} → £{inputs.endAge}`;
+  £('chartLegend').innerHTML = `
+    <div class="legend-item"><span class="legend-swatch" style="background:£{lineColorHex}"></span>Projected balance (today's £)</div>
     <div class="legend-item"><span class="legend-swatch" style="background:#D08A3E"></span>Retirement begins</div>
   `;
 }
@@ -904,42 +904,42 @@ function renderChartMC(perYearBalances, inputs, mode, runs){
     let d = '';
     ages.forEach((age,i) => {
       const cmd = i===0 ? 'M' : 'L';
-      d += `${cmd}${x(age).toFixed(1)},${y(Math.max(arr[i],0)).toFixed(1)} `;
+      d += `£{cmd}£{x(age).toFixed(1)},£{y(Math.max(arr[i],0)).toFixed(1)} `;
     });
     return d;
   }
   function bandFor(lower, upper){
     let d = '';
-    ages.forEach((age,i) => { d += (i===0?'M':'L') + `${x(age).toFixed(1)},${y(Math.max(upper[i],0)).toFixed(1)} `; });
-    for (let i=ages.length-1;i>=0;i--){ d += `L${x(ages[i]).toFixed(1)},${y(Math.max(lower[i],0)).toFixed(1)} `; }
+    ages.forEach((age,i) => { d += (i===0?'M':'L') + `£{x(age).toFixed(1)},£{y(Math.max(upper[i],0)).toFixed(1)} `; });
+    for (let i=ages.length-1;i>=0;i--){ d += `L£{x(ages[i]).toFixed(1)},£{y(Math.max(lower[i],0)).toFixed(1)} `; }
     d += 'Z';
     return d;
   }
 
   const retireX = x(inputs.retireAge);
 
-  let svg = `<svg class="chart" viewBox="0 0 ${CHART_W} ${CHART_H}" xmlns="http://www.w3.org/2000/svg">`;
+  let svg = `<svg class="chart" viewBox="0 0 £{CHART_W} £{CHART_H}" xmlns="http://www.w3.org/2000/svg">`;
   svg += buildAxesSVG(xDomain, yDomain, v => 'Age '+v, v => fmtMoneyShort(v), 'Age');
-  svg += `<line x1="${retireX}" y1="${MARGIN.top}" x2="${retireX}" y2="${CHART_H-MARGIN.bottom}" stroke="rgba(208,138,62,0.55)" stroke-width="1.3" stroke-dasharray="3,4"/>`;
-  svg += `<text x="${retireX+6}" y="${MARGIN.top+14}" font-family="Inter, sans-serif" font-size="11" fill="rgba(208,138,62,0.85)">Retirement</text>`;
+  svg += `<line x1="£{retireX}" y1="£{MARGIN.top}" x2="£{retireX}" y2="£{CHART_H-MARGIN.bottom}" stroke="rgba(208,138,62,0.55)" stroke-width="1.3" stroke-dasharray="3,4"/>`;
+  svg += `<text x="£{retireX+6}" y="£{MARGIN.top+14}" font-family="Inter, sans-serif" font-size="11" fill="rgba(208,138,62,0.85)">Retirement</text>`;
 
   // 10-90 band
-  svg += `<path d="${bandFor(p10,p90)}" fill="#D08A3E" opacity="0.10"/>`;
+  svg += `<path d="£{bandFor(p10,p90)}" fill="#D08A3E" opacity="0.10"/>`;
   // 25-75 band
-  svg += `<path d="${bandFor(p25,p75)}" fill="#D08A3E" opacity="0.18"/>`;
+  svg += `<path d="£{bandFor(p25,p75)}" fill="#D08A3E" opacity="0.18"/>`;
   // median line
-  svg += `<path d="${lineFor(p50)}" fill="none" stroke="#F5F1E8" stroke-width="2.6"/>`;
+  svg += `<path d="£{lineFor(p50)}" fill="none" stroke="#F5F1E8" stroke-width="2.6"/>`;
   // p10 line (risk edge)
-  svg += `<path d="${lineFor(p10)}" fill="none" stroke="#B14D36" stroke-width="1.6" stroke-dasharray="5,3" opacity="0.85"/>`;
+  svg += `<path d="£{lineFor(p10)}" fill="none" stroke="#B14D36" stroke-width="1.6" stroke-dasharray="5,3" opacity="0.85"/>`;
   // p90 line
-  svg += `<path d="${lineFor(p90)}" fill="none" stroke="#4C9A73" stroke-width="1.6" stroke-dasharray="5,3" opacity="0.85"/>`;
+  svg += `<path d="£{lineFor(p90)}" fill="none" stroke="#4C9A73" stroke-width="1.6" stroke-dasharray="5,3" opacity="0.85"/>`;
 
   svg += `</svg>`;
 
-  $('chartWrap').innerHTML = svg;
-  $('chartTitle').textContent = 'Simulated outcome fan';
-  $('chartSub').textContent = `${runs.toLocaleString()} simulations · ${mode === 'blocks' ? 'historical sequences' : 'random historical years'} · real $`;
-  $('chartLegend').innerHTML = `
+  £('chartWrap').innerHTML = svg;
+  £('chartTitle').textContent = 'Simulated outcome fan';
+  £('chartSub').textContent = `£{runs.toLocaleString()} simulations · £{mode === 'blocks' ? 'historical sequences' : 'random historical years'} · real £`;
+  £('chartLegend').innerHTML = `
     <div class="legend-item"><span class="legend-swatch" style="background:#F5F1E8"></span>Median outcome</div>
     <div class="legend-item"><span class="legend-swatch" style="background:#4C9A73"></span>90th percentile (strong markets)</div>
     <div class="legend-item"><span class="legend-swatch" style="background:#B14D36"></span>10th percentile (weak markets)</div>
@@ -954,13 +954,13 @@ function renderYearTable(rows){
   const tbody = document.querySelector('#yearTable tbody');
   tbody.innerHTML = rows.map(r => `
     <tr>
-      <td>${r.age}</td>
-      <td>${r.year}</td>
-      <td><span class="pill ${r.phase==='Working'?'green':'amber'}">${r.phase}</span></td>
-      <td>${r.spend ? fmtMoneyShort(r.spend) : '—'}</td>
-      <td>${r.contribution ? fmtMoneyShort(r.contribution) : '—'}</td>
-      <td style="color:${r.growth>=0?'#4C9A73':'#B14D36'}">${r.growth>=0?'+':''}${fmtMoneyShort(r.growth)}</td>
-      <td style="font-weight:600;color:${r.balance<=0?'#B14D36':'#F5F1E8'}">${fmtMoneyShort(r.balance)}</td>
+      <td>£{r.age}</td>
+      <td>£{r.year}</td>
+      <td><span class="pill £{r.phase==='Working'?'green':'amber'}">£{r.phase}</span></td>
+      <td>£{r.spend ? fmtMoneyShort(r.spend) : '—'}</td>
+      <td>£{r.contribution ? fmtMoneyShort(r.contribution) : '—'}</td>
+      <td style="color:£{r.growth>=0?'#4C9A73':'#B14D36'}">£{r.growth>=0?'+':''}£{fmtMoneyShort(r.growth)}</td>
+      <td style="font-weight:600;color:£{r.balance<=0?'#B14D36':'#F5F1E8'}">£{fmtMoneyShort(r.balance)}</td>
     </tr>
   `).join('');
 }
@@ -989,36 +989,36 @@ function renderMCTable(allResults, inputs, runs){
   const tbody = document.querySelector('#percentileTable tbody');
   tbody.innerHTML = rowsData.map(r => `
     <tr>
-      <td>${r.label}</td>
-      <td style="font-weight:600;color:${r.bal<=0?'#B14D36':'#F5F1E8'}">${fmtMoney(r.bal)}</td>
-      <td>${r.depAge ? (r.depAge - inputs.retireAge) + ' yrs' : `${inputs.endAge - inputs.retireAge}+ (full term)`}</td>
-      <td><span class="pill ${r.ok?'green':'brick'}">${r.ok?'Funded':'Depleted'}</span></td>
+      <td>£{r.label}</td>
+      <td style="font-weight:600;color:£{r.bal<=0?'#B14D36':'#F5F1E8'}">£{fmtMoney(r.bal)}</td>
+      <td>£{r.depAge ? (r.depAge - inputs.retireAge) + ' yrs' : `£{inputs.endAge - inputs.retireAge}+ (full term)`}</td>
+      <td><span class="pill £{r.ok?'green':'brick'}">£{r.ok?'Funded':'Depleted'}</span></td>
     </tr>
   `).join('');
 
   const failures = allResults.filter(r => r.depletedAtAge !== null).length;
-  $('mcSummarySub').textContent = `${runs.toLocaleString()} simulated lifetimes · ${failures.toLocaleString()} ran out of money before age ${inputs.endAge}`;
+  £('mcSummarySub').textContent = `£{runs.toLocaleString()} simulated lifetimes · £{failures.toLocaleString()} ran out of money before age £{inputs.endAge}`;
 
   const successRate = 1 - failures/runs;
   const cls = classify(successRate);
   let noteHTML;
   if (cls === 'success'){
-    noteHTML = `<div class="note-box green"><b>Reading this result:</b> A ${(successRate*100).toFixed(0)}% success rate against actual historical S&P 500 sequences (including 2008, 1973–74, and the 1930s) suggests this plan has real margin. The straight-line model and the simulation are telling a similar story.</div>`;
+    noteHTML = `<div class="note-box green"><b>Reading this result:</b> A £{(successRate*100).toFixed(0)}% success rate against actual historical S&P 500 sequences (including 2008, 1973–74, and the 1930s) suggests this plan has real margin. The straight-line model and the simulation are telling a similar story.</div>`;
   } else if (cls === 'caution'){
-    noteHTML = `<div class="note-box"><b>Reading this result:</b> A meaningful share of historical sequences deplete this portfolio before age ${inputs.endAge}. The risk isn't the average return — it's a poor sequence of returns early in retirement. Consider a lower withdrawal rate, more flexible spending, or delaying retirement by a year or two.</div>`;
+    noteHTML = `<div class="note-box"><b>Reading this result:</b> A meaningful share of historical sequences deplete this portfolio before age £{inputs.endAge}. The risk isn't the average return — it's a poor sequence of returns early in retirement. Consider a lower withdrawal rate, more flexible spending, or delaying retirement by a year or two.</div>`;
   } else {
-    noteHTML = `<div class="note-box brick"><b>Reading this result:</b> Most historical sequences run this portfolio dry before age ${inputs.endAge}. The gap between this and the straight-line projection is the real lesson: a single average growth rate hides how much sequence-of-returns risk matters in early retirement.</div>`;
+    noteHTML = `<div class="note-box brick"><b>Reading this result:</b> Most historical sequences run this portfolio dry before age £{inputs.endAge}. The gap between this and the straight-line projection is the real lesson: a single average growth rate hides how much sequence-of-returns risk matters in early retirement.</div>`;
   }
-  $('mcNoteBox').innerHTML = noteHTML;
+  £('mcNoteBox').innerHTML = noteHTML;
 }
 
 /* ---------------- Run button ---------------- */
-$('runBtn').addEventListener('click', () => {
+£('runBtn').addEventListener('click', () => {
   if (method === 'montecarlo'){
-    $('runBtn').textContent = 'Running…';
+    £('runBtn').textContent = 'Running…';
     setTimeout(() => {
       runMonteCarlo();
-      $('runBtn').textContent = 'Run Monte Carlo simulation';
+      £('runBtn').textContent = 'Run Monte Carlo simulation';
     }, 30);
   } else {
     runDeterministic();
