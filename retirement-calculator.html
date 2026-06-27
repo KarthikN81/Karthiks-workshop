@@ -42,9 +42,20 @@
 
   /* ---------- Header ---------- */
   .masthead{
-    max-width:1320px;margin:0 auto;padding:44px 32px 28px;
+    max-width:1320px;margin:0 auto;padding:24px 32px 28px;
     border-bottom:1px solid var(--line);
   }
+  .back-row{margin-bottom:20px;}
+  .back-link{
+    display:inline-flex;align-items:center;gap:7px;
+    font-family:var(--mono);font-size:12px;letter-spacing:0.06em;font-weight:500;
+    color:var(--text-mid);text-decoration:none;
+    border:1px solid var(--line);border-radius:999px;
+    padding:7px 14px 7px 11px;
+    transition:border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  .back-link:hover{border-color:var(--amber);color:var(--amber);background:var(--amber-dim);}
+  .back-link svg{flex-shrink:0;}
   .masthead-row{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex-wrap:wrap;}
   .brand{display:flex;align-items:baseline;gap:14px;}
   .brand-mark{
@@ -243,6 +254,14 @@
 <body>
 
 <header class="masthead">
+  <div class="back-row">
+    <a class="back-link" href="https://karthikn81.github.io/Karthiks-workshop/">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Back to workshop
+    </a>
+  </div>
   <div class="masthead-row">
     <div class="brand">
       <span class="brand-mark">Ledger No. 01</span>
@@ -262,7 +281,7 @@
     <div class="field">
       <label>Current portfolio balance <span class="hint">today, all accounts</span></label>
       <div class="input-wrap">
-        <span class="prefix">$</span>
+        <span class="prefix">£</span>
         <input type="number" id="balance" class="has-prefix" value="1000000" min="0" step="1000">
       </div>
     </div>
@@ -287,9 +306,9 @@
     </div>
 
     <div class="field">
-      <label>Current monthly spend <span class="hint">today's dollars</span></label>
+      <label>Current monthly spend <span class="hint">today's pounds</span></label>
       <div class="input-wrap">
-        <span class="prefix">$</span>
+        <span class="prefix">£</span>
         <input type="number" id="monthlySpend" class="has-prefix" value="6000" min="0" step="100">
       </div>
     </div>
@@ -297,7 +316,7 @@
     <div class="field">
       <label>Monthly contribution <span class="hint">while still working</span></label>
       <div class="input-wrap">
-        <span class="prefix">$</span>
+        <span class="prefix">£</span>
         <input type="number" id="monthlyContribution" class="has-prefix" value="2000" min="0" step="100">
       </div>
     </div>
@@ -317,9 +336,9 @@
     </div>
 
     <div class="field">
-      <label>Other retirement income <span class="hint">SS/pension, monthly</span></label>
+      <label>Other retirement income <span class="hint">State Pension/pension, monthly</span></label>
       <div class="input-wrap">
-        <span class="prefix">$</span>
+        <span class="prefix">£</span>
         <input type="number" id="otherIncome" class="has-prefix" value="0" min="0" step="100">
       </div>
     </div>
@@ -430,7 +449,7 @@
       <div style="height:18px;"></div>
       <table class="data-table" id="percentileTable">
         <thead>
-          <tr><th>Outcome</th><th>Ending balance (real $)</th><th>Years until depleted</th><th>Result</th></tr>
+          <tr><th>Outcome</th><th>Ending balance (real £)</th><th>Years until depleted</th><th>Result</th></tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -439,7 +458,7 @@
     <div class="panel-card">
       <div class="panel-head">
         <h2>Year-by-year ledger</h2>
-        <span class="sub">Median path, real dollars</span>
+        <span class="sub">Median path, real pounds</span>
       </div>
       <div class="chart-wrap" style="max-height:420px;overflow-y:auto;">
         <table class="data-table" id="yearTable">
@@ -483,17 +502,17 @@ const $ = id => document.getElementById(id);
 const fmtMoney = (v, decimals=0) => {
   const sign = v < 0 ? '-' : '';
   v = Math.abs(v);
-  return sign + '$' + v.toLocaleString('en-US', {maximumFractionDigits: decimals, minimumFractionDigits: decimals});
+  return sign + '£' + v.toLocaleString('en-GB', {maximumFractionDigits: decimals, minimumFractionDigits: decimals});
 };
 const fmtMoneyShort = (v) => {
   const sign = v < 0 ? '-' : '';
   v = Math.abs(v);
-  if (v >= 1e6) return sign + '$' + (v/1e6).toFixed(2) + 'M';
-  if (v >= 1e3) return sign + '$' + (v/1e3).toFixed(0) + 'k';
-  return sign + '$' + v.toFixed(0);
+  if (v >= 1e6) return sign + '£' + (v/1e6).toFixed(2) + 'M';
+  if (v >= 1e3) return sign + '£' + (v/1e3).toFixed(0) + 'k';
+  return sign + '£' + v.toFixed(0);
 };
 
-$('todayDate').textContent = new Date().toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
+$('todayDate').textContent = new Date().toLocaleDateString('en-GB', {year:'numeric', month:'long', day:'numeric'});
 
 /* ---------------- Slider live-value bindings ---------------- */
 function bindSlider(sliderId, valId, suffix, decimals){
@@ -546,7 +565,7 @@ updateHints();
 
 /* ============================================================
    CORE PROJECTION ENGINE
-   Works in REAL (inflation-adjusted, today's-dollar) terms throughout,
+   Works in REAL (inflation-adjusted, today's-pounds) terms throughout,
    so a constant real monthly spend = "same lifestyle".
    ============================================================ */
 function getInputs(){
@@ -583,7 +602,7 @@ function runPath(inputs, yearlyReturns){
   const {currentAge, retireAge, endAge, balance, monthlySpendToday, monthlyContribution,
          otherIncomeMonthly, cagrPre, cagrPost, inflation, fees, spendPct} = inputs;
 
-  let bal = balance; // real terms (today's dollars), since we start "today"
+  let bal = balance; // real terms (today's pounds), since we start "today"
   const rows = [];
   let depletedAtAge = null;
   const totalYears = endAge - currentAge;
@@ -874,7 +893,7 @@ function renderChartDeterministic(result, inputs){
   $('chartTitle').textContent = 'Portfolio path';
   $('chartSub').textContent = `Real (inflation-adjusted) balance, age ${inputs.currentAge} → ${inputs.endAge}`;
   $('chartLegend').innerHTML = `
-    <div class="legend-item"><span class="legend-swatch" style="background:${lineColorHex}"></span>Projected balance (today's $)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:${lineColorHex}"></span>Projected balance (today's £)</div>
     <div class="legend-item"><span class="legend-swatch" style="background:#D08A3E"></span>Retirement begins</div>
   `;
 }
@@ -937,7 +956,7 @@ function renderChartMC(perYearBalances, inputs, mode, runs){
 
   $('chartWrap').innerHTML = svg;
   $('chartTitle').textContent = 'Simulated outcome fan';
-  $('chartSub').textContent = `${runs.toLocaleString()} simulations · ${mode === 'blocks' ? 'historical sequences' : 'random historical years'} · real $`;
+  $('chartSub').textContent = `${runs.toLocaleString()} simulations · ${mode === 'blocks' ? 'historical sequences' : 'random historical years'} · real £`;
   $('chartLegend').innerHTML = `
     <div class="legend-item"><span class="legend-swatch" style="background:#F5F1E8"></span>Median outcome</div>
     <div class="legend-item"><span class="legend-swatch" style="background:#4C9A73"></span>90th percentile (strong markets)</div>
