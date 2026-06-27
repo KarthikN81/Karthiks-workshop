@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UK Inheritance Tax Calculator 2026/27</title>
+<style>
+  :root{
+    --navy: #1B2A4A;
+    --navy-deep: #11192E;
+    --parchment: #FAF8F4;
+    --parchment-line: #E8E2D5;
+    --gold: #A67C3D;
+    --gold-soft: #D9C49C;
+    --ink: #2A2A28;
+    --ink-soft: #6B6760;
+    --red: #9B2C2C;
+    --red-bg: #FBEFEF;
+    --green: #2F5233;
+    --green-bg: #EEF4EC;
+    --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: "Courier New", Courier, monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--parchment);
+    color:var(--ink);
+    font-family:var(--sans);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* texture */
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(27,42,74,0.025) 0px, rgba(27,42,74,0.025) 1px, transparent 1px, transparent 38px);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  .skip-link{position:absolute; left:-9999px;}
+  .skip-link:focus{left:8px; top:8px; background:#fff; padding:8px; z-index:999;}
+
+  header.masthead{
+    background:var(--navy);
+    background-image: linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
+    color:#F1EEE6;
+    padding:28px 24px 24px;
+    border-bottom:4px solid var(--gold);
+    position:relative;
+    z-index:1;
+  }
+  .masthead-inner{
+    max-width:1180px; margin:0 auto;
+    display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;
+  }
+  .masthead-crest{
+    display:flex; align-items:center; gap:14px;
+  }
+  .crest-mark{
+    width:42px; height:42px; flex-shrink:0;
+  }
+  .masthead h1{
+    font-family:var(--serif);
+    font-weight:600;
+    font-size:1.7rem;
+    margin:0;
+    letter-spacing:0.2px;
+  }
+  .masthead .eyebrow{
+    font-family:var(--mono);
+    font-size:0.72rem;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--gold-soft);
+    display:block;
+    margin-bottom:4px;
+  }
+  .masthead .tagline{
+    max-width:360px;
+    font-size:0.87rem;
+    color:#C9C4B6;
+    text-align:right;
+  }
+
+  main{
+    max-width:1180px;
+    margin:0 auto;
+    padding:32px 24px 80px;
+    position:relative;
+    z-index:1;
+  }
+
+  .intro-note{
+    background:#fff;
+    border:1px solid var(--parchment-line);
+    border-left:4px solid var(--navy);
+    padding:16px 20px;
+    border-radius:2px;
+    font-size:0.9rem;
+    color:var(--ink-soft);
+    margin-bottom:28px;
+  }
+  .intro-note strong{color:var(--ink);}
+
+  .layout{
+    display:grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap:28px;
+    align-items:start;
+  }
+
+  @media (max-width: 920px){
+    .layout{grid-template-columns:1fr;}
+    .masthead-inner{flex-direction:column; align-items:flex-start;}
+    .masthead .tagline{text-align:left;}
+  }
+
+  /* form panel */
+  .form-panel{
+    background:#fff;
+    border:1px solid var(--parchment-line);
+    border-radius:3px;
+    box-shadow:0 1px 3px rgba(27,42,74,0.06);
+  }
+
+  fieldset{
+    border:none;
+    margin:0;
+    padding:22px 24px;
+    border-bottom:1px solid var(--parchment-line);
+  }
+  fieldset:last-of-type{border-bottom:none;}
+
+  legend{
+    font-family:var(--serif);
+    font-size:1.05rem;
+    font-weight:600;
+    color:var(--navy);
+    padding:0;
+    margin-bottom:14px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  legend .legend-num{
+    font-family:var(--mono);
+    font-size:0.7rem;
+    color:#fff;
+    background:var(--navy);
+    border-radius:50%;
+    width:20px; height:20px;
+    display:inline-flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+
+  .field-row{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:16px;
+    margin-bottom:14px;
+  }
+  .field-row.single{grid-template-columns:1fr;}
+  @media (max-width:560px){ .field-row{grid-template-columns:1fr;} }
+
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+
+  label{
+    font-size:0.83rem;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .field .hint{
+    font-size:0.76rem;
+    color:var(--ink-soft);
+    font-weight:400;
+    margin-top:-2px;
+  }
+
+  .money-input{
+    position:relative;
+  }
+  .money-input::before{
+    content:"£";
+    position:absolute;
+    left:13px; top:0; bottom:0;
+    display:flex;
+    align-items:center;
+    color:var(--ink-soft);
+    font-family:var(--sans);
+    font-size:0.95rem;
+    font-weight:600;
+    pointer-events:none;
+  }
+  .money-input input{
+    padding-left:32px;
+  }
+
+  input[type="text"],
+  input[type="number"],
+  select{
+    width:100%;
+    padding:10px 12px;
+    font-size:0.95rem;
+    font-family:var(--mono);
+    border:1px solid #CFC9B8;
+    border-radius:3px;
+    background:#FFFDF9;
+    color:var(--ink);
+    transition:border-color 0.15s, box-shadow 0.15s;
+  }
+  select{font-family:var(--sans); font-size:0.9rem;}
+
+  input:focus, select:focus{
+    outline:none;
+    border-color:var(--navy);
+    box-shadow:0 0 0 3px rgba(27,42,74,0.12);
+  }
+
+  .toggle-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:10px 0;
+  }
+  .toggle-row label{font-weight:500; font-size:0.88rem;}
+
+  .switch{
+    position:relative;
+    display:inline-block;
+    width:44px; height:24px;
+    flex-shrink:0;
+    cursor:pointer;
+  }
+  .switch input{
+    position:absolute;
+    inset:0;
+    width:100%; height:100%;
+    margin:0;
+    opacity:0;
+    cursor:pointer;
+    z-index:1;
+  }
+  .switch .track{
+    position:absolute; inset:0;
+    background:#D6D0C0;
+    border-radius:999px;
+    cursor:pointer;
+    transition:background 0.18s;
+    pointer-events:none;
+  }
+  .switch .track::after{
+    content:"";
+    position:absolute;
+    width:18px; height:18px;
+    border-radius:50%;
+    background:#fff;
+    top:3px; left:3px;
+    transition:transform 0.18s;
+    box-shadow:0 1px 2px rgba(0,0,0,0.3);
+  }
+  .switch input:checked + .track{background:var(--navy);}
+  .switch input:checked + .track::after{transform:translateX(20px);}
+  .switch input:focus-visible + .track{box-shadow:0 0 0 3px rgba(27,42,74,0.25);}
+
+  .stepper{
+    display:flex;
+    align-items:center;
+    border:1px solid #CFC9B8;
+    border-radius:3px;
+    background:#FFFDF9;
+    overflow:hidden;
+    width:fit-content;
+  }
+  .stepper button{
+    width:36px; height:38px;
+    background:var(--parchment);
+    border:none;
+    font-size:1.1rem;
+    color:var(--navy);
+    cursor:pointer;
+    font-family:var(--sans);
+  }
+  .stepper button:hover{background:var(--gold-soft);}
+  .stepper button:focus-visible{outline:2px solid var(--navy); outline-offset:-2px;}
+  .stepper .count{
+    width:48px;
+    text-align:center;
+    font-family:var(--mono);
+    font-size:1rem;
+    border-left:1px solid #CFC9B8;
+    border-right:1px solid #CFC9B8;
+    padding:8px 0;
+  }
+
+  .radio-pair{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .radio-pair label{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-weight:400;
+    font-size:0.88rem;
+    border:1px solid #CFC9B8;
+    padding:8px 12px;
+    border-radius:3px;
+    cursor:pointer;
+    background:#FFFDF9;
+    transition:background 0.15s, border-color 0.15s;
+  }
+  .radio-pair input{margin:0;}
+  .radio-pair input:checked + span{font-weight:600;}
+  .radio-pair label:has(input:checked){
+    border-color:var(--navy);
+    background:#EEF1F6;
+  }
+
+  details.advanced{
+    margin-top:6px;
+  }
+  details.advanced summary{
+    cursor:pointer;
+    font-size:0.86rem;
+    font-weight:600;
+    color:var(--navy);
+    padding:8px 0;
+    list-style:none;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  details.advanced summary::-webkit-details-marker{display:none;}
+  details.advanced summary::before{
+    content:"▸";
+    transition:transform 0.15s;
+    font-size:0.7rem;
+  }
+  details.advanced[open] summary::before{transform:rotate(90deg);}
+  details.advanced .advanced-body{
+    padding-top:10px;
+  }
+
+  .charity-slider-wrap{
+    display:flex; align-items:center; gap:12px;
+  }
+  input[type="range"]{
+    flex:1;
+    accent-color:var(--navy);
+  }
+  .charity-value{
+    font-family:var(--mono);
+    font-size:0.9rem;
+    width:48px;
+    text-align:right;
+    color:var(--navy);
+    font-weight:600;
+  }
+
+  /* result panel */
+  .result-panel{
+    position:sticky;
+    top:24px;
+  }
+
+  .ledger{
+    background:#fff;
+    border:1px solid var(--parchment-line);
+    border-radius:3px;
+    box-shadow:0 1px 3px rgba(27,42,74,0.06);
+    overflow:hidden;
+  }
+
+  .ledger-head{
+    background:var(--navy);
+    color:#fff;
+    padding:18px 22px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+  }
+  .ledger-head h2{
+    font-family:var(--serif);
+    font-size:1.05rem;
+    margin:0;
+    font-weight:600;
+  }
+  .ledger-head .ref{
+    font-family:var(--mono);
+    font-size:0.7rem;
+    color:var(--gold-soft);
+    text-align:right;
+  }
+
+  .verdict{
+    padding:22px 22px 16px;
+    text-align:center;
+    border-bottom:1px dashed var(--parchment-line);
+  }
+  .verdict .verdict-label{
+    font-family:var(--mono);
+    font-size:0.74rem;
+    letter-spacing:1.2px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .verdict .verdict-amount{
+    font-family:var(--serif);
+    font-size:2.4rem;
+    font-weight:700;
+    line-height:1.1;
+  }
+  .verdict.due .verdict-amount{color:var(--red);}
+  .verdict.clear .verdict-amount{color:var(--green);}
+  .verdict .verdict-sub{
+    font-size:0.84rem;
+    color:var(--ink-soft);
+    margin-top:6px;
+  }
+
+  .stamp{
+    display:inline-block;
+    margin-top:10px;
+    font-family:var(--mono);
+    font-size:0.68rem;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    padding:5px 12px;
+    border-radius:999px;
+    border:1.5px solid currentColor;
+  }
+  .verdict.due .stamp{color:var(--red); background:var(--red-bg);}
+  .verdict.clear .stamp{color:var(--green); background:var(--green-bg);}
+
+  .breakdown{
+    padding:18px 22px 22px;
+  }
+  .breakdown h3{
+    font-family:var(--serif);
+    font-size:0.92rem;
+    color:var(--navy);
+    margin:0 0 10px;
+    font-weight:600;
+  }
+  .ledger-line{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    padding:7px 0;
+    font-size:0.86rem;
+    border-bottom:1px solid #F1EEE4;
+  }
+  .ledger-line .desc{color:var(--ink-soft);}
+  .ledger-line .val{
+    font-family:var(--mono);
+    font-weight:600;
+    color:var(--ink);
+    white-space:nowrap;
+  }
+  .ledger-line.subtract .val::before{content:"− ";}
+  .ledger-line.add .val::before{content:"+ ";}
+  .ledger-line.total{
+    border-top:2px solid var(--navy);
+    border-bottom:none;
+    margin-top:6px;
+    padding-top:10px;
+    font-weight:700;
+  }
+  .ledger-line.total .desc{color:var(--navy); font-weight:700;}
+  .ledger-line.total .val{font-size:1rem;}
+  .ledger-line.tax .val{color:var(--red);}
+  .ledger-line.indent .desc{padding-left:14px;}
+
+  .per-child-box{
+    margin-top:16px;
+    background:var(--parchment);
+    border:1px solid var(--parchment-line);
+    border-radius:3px;
+    padding:14px 16px;
+  }
+  .per-child-box h4{
+    margin:0 0 8px;
+    font-size:0.82rem;
+    font-family:var(--serif);
+    color:var(--navy);
+  }
+  .per-child-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .child-chip{
+    background:#fff;
+    border:1px solid var(--parchment-line);
+    border-radius:3px;
+    padding:8px 12px;
+    font-size:0.78rem;
+    text-align:center;
+    flex:1;
+    min-width:90px;
+  }
+  .child-chip .who{color:var(--ink-soft); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px;}
+  .child-chip .amt{font-family:var(--mono); font-weight:700; color:var(--navy); margin-top:2px;}
+
+  .notes-box{
+    margin-top:16px;
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    background:#FBF9F4;
+    border:1px solid var(--parchment-line);
+    border-radius:3px;
+    padding:12px 14px;
+  }
+  .notes-box ul{margin:6px 0 0; padding-left:18px;}
+  .notes-box li{margin-bottom:4px;}
+
+  .gift-note{
+    margin-top:10px;
+    font-size:0.78rem;
+    background:#FFF8EC;
+    border:1px solid var(--gold-soft);
+    border-radius:3px;
+    padding:10px 12px;
+    color:#7A5A22;
+  }
+
+  footer.page-footer{
+    max-width:1180px;
+    margin:0 auto;
+    padding:0 24px 50px;
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    position:relative;
+    z-index:1;
+  }
+  footer.page-footer a{color:var(--navy);}
+
+  .disclaimer{
+    border-top:1px solid var(--parchment-line);
+    padding-top:18px;
+    margin-top:8px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<a href="#estate-form" class="skip-link">Skip to calculator form</a>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="masthead-crest">
+      <svg class="crest-mark" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="2" y="2" width="44" height="44" rx="3" stroke="#D9C49C" stroke-width="1.5"/>
+        <path d="M24 8L36 14V22C36 30 30.5 36 24 38C17.5 36 12 30 12 22V14L24 8Z" stroke="#D9C49C" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M18 22L23 27L31 17" stroke="#D9C49C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div>
+        <span class="eyebrow">Estate &amp; Probate Planning Tool</span>
+        <h1>UK Inheritance Tax Calculator — 2026/27</h1>
+      </div>
+    </div>
+    <p class="tagline">Estimates your estate's Inheritance Tax liability under current HMRC thresholds, with allowances for children, pensions and gifting.</p>
+  </div>
+</header>
+
+<main>
+  <div class="intro-note">
+    <strong>How this works:</strong> This tool estimates Inheritance Tax (IHT) using the 2026/27 nil-rate band (£325,000), residence nil-rate band (up to £175,000), and the £2m taper threshold. It's a planning estimate, not a substitute for advice from a solicitor or tax adviser — actual probate calculations involve case-specific reliefs HMRC will assess individually.
+  </div>
+
+  <div class="layout">
+
+    <!-- FORM -->
+    <form class="form-panel" id="estate-form" autocomplete="off">
+
+      <fieldset>
+        <legend><span class="legend-num">1</span> About the deceased</legend>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="age">Age at death</label>
+            <input type="number" id="age" min="0" max="120" value="78" inputmode="numeric">
+            <span class="hint">Relevant for context only — IHT itself isn't age-banded.</span>
+          </div>
+          <div class="field">
+            <label for="maritalStatus">Marital / civil partnership status</label>
+            <select id="maritalStatus">
+              <option value="single">Single / divorced / widowed (no transfer)</option>
+              <option value="married" selected>Married or civil partnership</option>
+              <option value="widowedTransfer">Widowed — inheriting late spouse's unused allowance</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="spouseTransferRow" class="field-row single" style="display:none;">
+          <div class="field">
+            <label for="spouseNrbUsedPct">% of late spouse's nil-rate band already used</label>
+            <div class="charity-slider-wrap">
+              <input type="range" id="spouseNrbUsedPct" min="0" max="100" value="0" step="5">
+              <span class="charity-value" id="spouseNrbUsedPctLabel">0%</span>
+            </div>
+            <span class="hint">E.g. if your late spouse left £162,500 directly to others (50% of £325,000), enter 50%. Leave at 0% if their whole estate passed to you tax-free.</span>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="legend-num">2</span> Property</legend>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="houseValue">Main residence value</label>
+            <div class="money-input">
+              <input type="text" id="houseValue" value="450,000" inputmode="numeric">
+            </div>
+          </div>
+          <div class="field">
+            <label for="mortgage">Outstanding mortgage / secured debt</label>
+            <div class="money-input">
+              <input type="text" id="mortgage" value="0" inputmode="numeric">
+            </div>
+          </div>
+        </div>
+
+        <div class="toggle-row">
+          <label for="leftToDescendants">Home left to children / grandchildren (direct descendants)?</label>
+          <span class="switch">
+            <input type="checkbox" id="leftToDescendants" checked>
+            <span class="track" aria-hidden="true"></span>
+          </span>
+        </div>
+        <span class="hint">Required to claim the £175,000 residence nil-rate band. Leaving the home to siblings, friends, or most trusts doesn't qualify.</span>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="legend-num">3</span> Pension</legend>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="pensionValue">Unused defined-contribution pension balance</label>
+            <div class="money-input">
+              <input type="text" id="pensionValue" value="0" inputmode="numeric">
+            </div>
+            <span class="hint">SIPPs, workplace DC pots, drawdown funds not yet paid out.</span>
+          </div>
+          <div class="field">
+            <label for="deathDate">Date of death</label>
+            <select id="deathDate">
+              <option value="before2027" selected>Before 6 April 2027</option>
+              <option value="after2027">On or after 6 April 2027</option>
+            </select>
+            <span class="hint">From 6 Apr 2027, most unused pensions count toward the taxable estate (Finance Act 2026). Before then, they're normally outside it.</span>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="legend-num">4</span> Other assets &amp; debts</legend>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="savings">Savings, cash &amp; investments (ISAs, shares, bonds)</label>
+            <div class="money-input">
+              <input type="text" id="savings" value="60,000" inputmode="numeric">
+            </div>
+          </div>
+          <div class="field">
+            <label for="possessions">Other assets (car, jewellery, life policies not in trust, etc.)</label>
+            <div class="money-input">
+              <input type="text" id="possessions" value="15,000" inputmode="numeric">
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="debts">Other debts &amp; funeral costs</label>
+            <div class="money-input">
+              <input type="text" id="debts" value="5,000" inputmode="numeric">
+            </div>
+          </div>
+          <div class="field">
+            <label for="lifeInsuranceInTrust">Life insurance written in trust</label>
+            <div class="money-input">
+              <input type="text" id="lifeInsuranceInTrust" value="0" inputmode="numeric">
+            </div>
+            <span class="hint">Excluded from the estate if correctly written in trust — shown for reference only.</span>
+          </div>
+        </div>
+
+        <details class="advanced">
+          <summary>Business or agricultural assets (BPR / APR)</summary>
+          <div class="advanced-body">
+            <div class="field-row">
+              <div class="field">
+                <label for="bpr">Qualifying business / agricultural property value</label>
+                <div class="money-input">
+                  <input type="text" id="bpr" value="0" inputmode="numeric">
+                </div>
+                <span class="hint">From 6 Apr 2026: 100% relief on the first £2.5m combined per person, 50% relief above that (effective 20% IHT on the excess).</span>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="advanced">
+          <summary>Gifts made in the last 7 years</summary>
+          <div class="advanced-body">
+            <div class="field-row">
+              <div class="field">
+                <label for="giftsValue">Total gifts given (excluding annual £3,000 exemptions)</label>
+                <div class="money-input">
+                  <input type="text" id="giftsValue" value="0" inputmode="numeric">
+                </div>
+              </div>
+              <div class="field">
+                <label for="giftsYearsAgo">How many years before death were they given?</label>
+                <select id="giftsYearsAgo">
+                  <option value="0">Less than 3 years</option>
+                  <option value="3">3–4 years</option>
+                  <option value="4">4–5 years</option>
+                  <option value="5">5–6 years</option>
+                  <option value="6">6–7 years</option>
+                  <option value="7">7+ years (fully exempt)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </details>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="legend-num">5</span> Beneficiaries &amp; children</legend>
+
+        <div class="field">
+          <label for="numChildren">Number of children inheriting</label>
+          <div class="stepper">
+            <button type="button" id="childMinus" aria-label="Decrease number of children">−</button>
+            <span class="count" id="numChildrenDisplay">2</span>
+            <button type="button" id="childPlus" aria-label="Increase number of children">+</button>
+          </div>
+          <span class="hint">Used to split the estimated net inheritance and tax-paid estate per child below. Doesn't change the total tax owed — that's fixed by estate value, not headcount.</span>
+        </div>
+
+        <div class="field" style="margin-top:14px;">
+          <label for="splitMethod">How is the estate split between children?</label>
+          <select id="splitMethod">
+            <option value="equal" selected>Equally between all children</option>
+          </select>
+          <span class="hint">Children don't pay separate "inheritance tax brackets" — IHT is charged once on the estate before distribution. Each child's income tax band only matters later, for tax on income the inherited assets generate.</span>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="legend-num">6</span> Charitable giving</legend>
+        <div class="field">
+          <label for="charityPct">% of net estate left to charity</label>
+          <div class="charity-slider-wrap">
+            <input type="range" id="charityPct" min="0" max="50" value="0" step="1">
+            <span class="charity-value" id="charityPctLabel">0%</span>
+          </div>
+          <span class="hint">Leaving 10% or more of the net estate to charity cuts the IHT rate from 40% to 36% on the rest.</span>
+        </div>
+      </fieldset>
+
+    </form>
+
+    <!-- RESULT -->
+    <div class="result-panel">
+      <div class="ledger" aria-live="polite">
+        <div class="ledger-head">
+          <h2>Estimated IHT Assessment</h2>
+          <span class="ref">HMRC IHT400<br>2026/27 rates</span>
+        </div>
+
+        <div class="verdict due" id="verdictBox">
+          <div class="verdict-label">Estimated tax due</div>
+          <div class="verdict-amount" id="taxDueAmount">£0</div>
+          <div class="verdict-sub" id="verdictSub">on a taxable estate of £0</div>
+          <span class="stamp" id="stampLabel">Liable</span>
+        </div>
+
+        <div class="breakdown">
+          <h3>Estate computation</h3>
+
+          <div class="ledger-line"><span class="desc">Property value</span><span class="val" id="lProperty">£0</span></div>
+          <div class="ledger-line subtract"><span class="desc indent">less mortgage/secured debt</span><span class="val" id="lMortgage">£0</span></div>
+          <div class="ledger-line"><span class="desc">Pension (in estate?)</span><span class="val" id="lPension">£0</span></div>
+          <div class="ledger-line"><span class="desc">Savings &amp; investments</span><span class="val" id="lSavings">£0</span></div>
+          <div class="ledger-line"><span class="desc">Other assets</span><span class="val" id="lPossessions">£0</span></div>
+          <div class="ledger-line"><span class="desc">Business/agricultural assets (after relief)</span><span class="val" id="lBpr">£0</span></div>
+          <div class="ledger-line"><span class="desc">Chargeable gifts (7-yr rule)</span><span class="val" id="lGifts">£0</span></div>
+          <div class="ledger-line subtract"><span class="desc indent">less debts &amp; funeral costs</span><span class="val" id="lDebts">£0</span></div>
+          <div class="ledger-line total"><span class="desc">Gross estate</span><span class="val" id="lGrossEstate">£0</span></div>
+
+          <div class="ledger-line subtract" style="margin-top:10px;"><span class="desc">Nil-rate band (NRB)</span><span class="val" id="lNrb">£0</span></div>
+          <div class="ledger-line subtract"><span class="desc">Residence nil-rate band (RNRB)</span><span class="val" id="lRnrb">£0</span></div>
+          <div class="ledger-line"><span class="desc indent" id="taperNote"></span><span class="val"></span></div>
+          <div class="ledger-line total"><span class="desc">Taxable estate</span><span class="val" id="lTaxableEstate">£0</span></div>
+
+          <div class="ledger-line total tax"><span class="desc">IHT due (<span id="taxRateLabel">40</span>%)</span><span class="val" id="lTaxDue">£0</span></div>
+
+          <div class="per-child-box" id="perChildBox">
+            <h4>Estimated net inheritance per child</h4>
+            <div class="per-child-grid" id="perChildGrid"></div>
+          </div>
+
+          <div class="gift-note" id="giftNote" style="display:none;"></div>
+
+          <div class="notes-box">
+            <strong>Assumptions in this estimate</strong>
+            <ul>
+              <li>Full NRB (£325,000) and RNRB (£175,000) available to a single person; married/widowed status can unlock up to double via spousal transfer.</li>
+              <li>RNRB tapers by £1 for every £2 the gross estate exceeds £2,000,000, and is lost entirely at £2,350,000 (single) or up to £2,700,000 (with full transfer).</li>
+              <li>Pensions are only included in the estate for deaths on or after 6 April 2027, per Finance Act 2026.</li>
+              <li>This is an estimate only — trusts, foreign assets, prior PETs, and specific reliefs may change the real liability. Speak to a solicitor or tax adviser for a formal calculation.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer class="page-footer">
+  <div class="disclaimer">
+    Figures reflect HMRC's published Inheritance Tax thresholds for the 2026/27 tax year (nil-rate band £325,000, residence nil-rate band £175,000, both frozen until April 2031) and the Business/Agricultural Property Relief cap introduced from 6 April 2026. Rules affecting pensions take effect from 6 April 2027. This calculator is provided for general guidance and educational purposes only and does not constitute financial, legal, or tax advice. For a definitive assessment, consult a solicitor, accountant, or financial adviser, or refer to <a href="https://www.gov.uk/inheritance-tax" target="_blank" rel="noopener">gov.uk/inheritance-tax</a>.
+  </div>
+</footer>
+
+<script>
+(function(){
+  const NRB = 325000;
+  const RNRB = 175000;
+  const TAPER_THRESHOLD = 2000000;
+
+  const $ = id => document.getElementById(id);
+
+  const moneyInputs = ['houseValue','mortgage','pensionValue','savings','possessions','debts','lifeInsuranceInTrust','bpr','giftsValue'];
+
+  function parseMoney(str){
+    if(!str) return 0;
+    const n = parseFloat(String(str).replace(/[^0-9.\-]/g,''));
+    return isNaN(n) ? 0 : Math.max(0, n);
+  }
+
+  function formatMoney(n){
+    n = Math.round(n);
+    const neg = n < 0;
+    n = Math.abs(n);
+    const s = '£' + n.toLocaleString('en-GB');
+    return neg ? '−' + s : s;
+  }
+
+  function formatInputDisplay(n){
+    return Math.round(n).toLocaleString('en-GB');
+  }
+
+  // live-format money inputs on blur, raw while typing
+  moneyInputs.forEach(id=>{
+    const el = $(id);
+    el.addEventListener('blur', ()=>{
+      el.value = formatInputDisplay(parseMoney(el.value));
+      recalculate();
+    });
+    el.addEventListener('input', recalculate);
+  });
+
+  // number of children stepper
+  let numChildren = 2;
+  function renderChildCount(){ $('numChildrenDisplay').textContent = numChildren; }
+  $('childMinus').addEventListener('click', ()=>{ numChildren = Math.max(0, numChildren-1); renderChildCount(); recalculate(); });
+  $('childPlus').addEventListener('click', ()=>{ numChildren = Math.min(10, numChildren+1); renderChildCount(); recalculate(); });
+  renderChildCount();
+
+  // marital status -> show/hide spouse transfer row
+  $('maritalStatus').addEventListener('change', ()=>{
+    const show = $('maritalStatus').value === 'widowedTransfer';
+    $('spouseTransferRow').style.display = show ? 'flex' : 'none';
+    recalculate();
+  });
+
+  // sliders
+  $('spouseNrbUsedPct').addEventListener('input', ()=>{
+    $('spouseNrbUsedPctLabel').textContent = $('spouseNrbUsedPct').value + '%';
+    recalculate();
+  });
+  $('charityPct').addEventListener('input', ()=>{
+    $('charityPctLabel').textContent = $('charityPct').value + '%';
+    recalculate();
+  });
+
+  ['leftToDescendants','deathDate','giftsYearsAgo','splitMethod'].forEach(id=>{
+    $(id).addEventListener('change', recalculate);
+    $(id).addEventListener('input', recalculate);
+  });
+
+  function giftTaperRelief(yearsAgo){
+    // returns fraction of tax STILL due on the gift portion (taper relief reduces tax on gift itself)
+    // 0-3 yrs: 100% due, 3-4: 80%, 4-5: 60%, 5-6: 40%, 6-7: 20%, 7+: 0%
+    const map = {0:1, 3:0.8, 4:0.6, 5:0.4, 6:0.2, 7:0};
+    return map[yearsAgo] !== undefined ? map[yearsAgo] : 1;
+  }
+
+  function recalculate(){
+    const houseValue = parseMoney($('houseValue').value);
+    const mortgage = parseMoney($('mortgage').value);
+    const pensionValue = parseMoney($('pensionValue').value);
+    const savings = parseMoney($('savings').value);
+    const possessions = parseMoney($('possessions').value);
+    const debts = parseMoney($('debts').value);
+    const bprRaw = parseMoney($('bpr').value);
+    const giftsValue = parseMoney($('giftsValue').value);
+    const giftsYearsAgo = parseInt($('giftsYearsAgo').value, 10);
+
+    const leftToDescendants = $('leftToDescendants').checked;
+    const maritalStatus = $('maritalStatus').value;
+    const spouseNrbUsedPct = parseInt($('spouseNrbUsedPct').value, 10) / 100;
+    const charityPct = parseInt($('charityPct').value, 10);
+    const deathAfter2027 = $('deathDate').value === 'after2027';
+
+    const netHouseValue = Math.max(0, houseValue - mortgage);
+
+    // BPR/APR relief: 100% on first 2.5m, 50% above
+    const BPR_CAP = 2500000;
+    let bprTaxable;
+    if (bprRaw <= BPR_CAP) {
+      bprTaxable = 0;
+    } else {
+      bprTaxable = (bprRaw - BPR_CAP) * 0.5;
+    }
+    const bprRelieved = bprRaw - bprTaxable;
+
+    const pensionInEstate = deathAfter2027 ? pensionValue : 0;
+
+    // chargeable gifts after taper relief is applied to TAX not to the value itself for NRB-usage purposes;
+    // but for simplicity & to reflect that gifts >7yrs are fully exempt and use NRB first:
+    const giftsInEstate = giftsYearsAgo >= 7 ? 0 : giftsValue;
+    const giftTaperFraction = giftTaperRelief(giftsYearsAgo);
+
+    const grossEstate = netHouseValue + pensionInEstate + savings + possessions + bprTaxable + giftsInEstate - debts;
+    const grossEstateFloor = Math.max(0, grossEstate);
+
+    // Allowance multiplier from marital status
+    let nrbMultiplier = 1;
+    let rnrbMultiplier = 1;
+    if (maritalStatus === 'married') {
+      nrbMultiplier = 2;
+      rnrbMultiplier = 2;
+    } else if (maritalStatus === 'widowedTransfer') {
+      nrbMultiplier = 1 + (1 - spouseNrbUsedPct);
+      rnrbMultiplier = 1 + (1 - spouseNrbUsedPct); // simplifying assumption: same unused % applies to RNRB
+    }
+
+    let availableNrb = NRB * nrbMultiplier;
+    let availableRnrb = leftToDescendants ? RNRB * rnrbMultiplier : 0;
+    // RNRB can't exceed the net value of the home passed to descendants
+    availableRnrb = Math.min(availableRnrb, leftToDescendants ? netHouseValue : 0);
+
+    // Taper: based on gross estate, threshold doubles to 4m conceptually since taper threshold itself doesn't change
+    // per HMRC rules taper threshold is £2m per estate (not multiplied for couples in the same way) -
+    // but a couple's combined estate taper threshold is treated as 2m per death assessed; we approximate using
+    // the threshold scaled by rnrbMultiplier's underlying number of allowances (1 or 2) since taper applies per estate at second death.
+    const taperThreshold = TAPER_THRESHOLD; // taper threshold itself is fixed at £2m regardless of marital status
+    let rnrbAfterTaper = availableRnrb;
+    let taperReduction = 0;
+    if (grossEstateFloor > taperThreshold && availableRnrb > 0) {
+      taperReduction = Math.floor((grossEstateFloor - taperThreshold) / 2);
+      rnrbAfterTaper = Math.max(0, availableRnrb - taperReduction);
+    }
+
+    const totalAllowance = availableNrb + rnrbAfterTaper;
+    let taxableEstate = Math.max(0, grossEstateFloor - totalAllowance);
+
+    // apply gift taper relief to the *gift-attributable* slice of tax (approximation):
+    // compute tax at full rate first, then if gifts are within 3-7 years, reduce only the proportional tax on gift slice
+    const taxRate = charityPct >= 10 ? 0.36 : 0.40;
+
+    let taxDue = taxableEstate * taxRate;
+
+    // gift taper adjustment: only meaningfully relevant if gifts pushed estate over the allowance
+    let giftTaxAdjustment = 0;
+    if (giftsInEstate > 0 && giftTaperFraction < 1 && taxableEstate > 0) {
+      const giftPortionInTaxable = Math.min(giftsInEstate, taxableEstate);
+      const fullTaxOnGiftPortion = giftPortionInTaxable * taxRate;
+      const reducedTaxOnGiftPortion = fullTaxOnGiftPortion * giftTaperFraction;
+      giftTaxAdjustment = fullTaxOnGiftPortion - reducedTaxOnGiftPortion;
+      taxDue = Math.max(0, taxDue - giftTaxAdjustment);
+    }
+
+    taxDue = Math.round(taxDue);
+
+    // ---- render ----
+    $('lProperty').textContent = formatMoney(houseValue);
+    $('lMortgage').textContent = formatMoney(mortgage);
+    $('lPension').textContent = deathAfter2027
+      ? formatMoney(pensionValue) + ' (in estate)'
+      : formatMoney(0) + ' (excluded pre-2027)';
+    $('lSavings').textContent = formatMoney(savings);
+    $('lPossessions').textContent = formatMoney(possessions);
+    $('lBpr').textContent = bprRaw > 0 ? formatMoney(bprTaxable) + (bprRelieved>0 ? ' (relief: ' + formatMoney(bprRelieved) + ')' : '') : formatMoney(0);
+    $('lGifts').textContent = giftsYearsAgo >= 7 ? formatMoney(0) + ' (7yr+ exempt)' : formatMoney(giftsInEstate);
+    $('lDebts').textContent = formatMoney(debts);
+    $('lGrossEstate').textContent = formatMoney(grossEstateFloor);
+
+    $('lNrb').textContent = formatMoney(availableNrb);
+    $('lRnrb').textContent = formatMoney(rnrbAfterTaper);
+
+    if (taperReduction > 0) {
+      $('taperNote').textContent = `Taper applied: estate exceeds £2m by ${formatMoney(grossEstateFloor - taperThreshold)}, reducing RNRB by ${formatMoney(taperReduction)}`;
+      $('taperNote').parentElement.style.display = 'flex';
+    } else {
+      $('taperNote').textContent = '';
+      $('taperNote').parentElement.style.display = leftToDescendants ? 'none' : 'none';
+    }
+
+    $('lTaxableEstate').textContent = formatMoney(taxableEstate);
+    $('taxRateLabel').textContent = taxRate === 0.36 ? '36' : '40';
+    $('lTaxDue').textContent = formatMoney(taxDue);
+
+    $('taxDueAmount').textContent = formatMoney(taxDue);
+    $('verdictSub').textContent = `on a taxable estate of ${formatMoney(taxableEstate)}`;
+
+    const verdictBox = $('verdictBox');
+    const stamp = $('stampLabel');
+    if (taxDue > 0) {
+      verdictBox.classList.remove('clear');
+      verdictBox.classList.add('due');
+      stamp.textContent = 'Liable';
+    } else {
+      verdictBox.classList.remove('due');
+      verdictBox.classList.add('clear');
+      stamp.textContent = 'No tax due';
+    }
+
+    // per-child breakdown
+    const netEstateAfterTax = Math.max(0, grossEstateFloor - taxDue);
+    const perChildGrid = $('perChildGrid');
+    perChildGrid.innerHTML = '';
+    if (numChildren > 0) {
+      $('perChildBox').style.display = 'block';
+      const each = netEstateAfterTax / numChildren;
+      for (let i=1; i<=numChildren; i++){
+        const chip = document.createElement('div');
+        chip.className = 'child-chip';
+        chip.innerHTML = `<div class="who">Child ${i}</div><div class="amt">${formatMoney(each)}</div>`;
+        perChildGrid.appendChild(chip);
+      }
+    } else {
+      $('perChildBox').style.display = 'none';
+    }
+
+    // gift note
+    const giftNote = $('giftNote');
+    if (giftsInEstate > 0 && giftsYearsAgo < 7) {
+      giftNote.style.display = 'block';
+      const taperPct = Math.round((1-giftTaperFraction)*100);
+      giftNote.innerHTML = `<strong>Gift taper relief:</strong> gifts made ${giftsYearsAgo === 0 ? 'within 3 years' : giftsYearsAgo + '–' + (giftsYearsAgo+1) + ' years'} of death carry ${taperPct}% taper relief on the tax attributable to that gift, reducing the estimated tax by ${formatMoney(giftTaxAdjustment)}.`;
+    } else {
+      giftNote.style.display = 'none';
+    }
+  }
+
+  recalculate();
+})();
+</script>
+
+</body>
+</html>
