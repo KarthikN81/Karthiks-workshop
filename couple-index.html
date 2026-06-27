@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Drawdown Ledger — UK Retirement Withdrawal Planner for Couples</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600&family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+
+:root{
+  --paper:#FAF7F1;
+  --paper-dim:#F1ECE2;
+  --ink:#1F2A24;
+  --ink-soft:#5B6760;
+  --rule:#D8D0C0;
+  --rule-strong:#B9AE96;
+
+  --isa:#3F7A5C;
+  --isa-soft:#E3EFE6;
+  --pen-tax:#BD7234;
+  --pen-tax-soft:#F5E8D9;
+  --pen-free:#3A5B82;
+  --pen-free-soft:#E2E9F0;
+  --state:#7A6A9C;
+  --state-soft:#ECE7F2;
+
+  --other:#8A5A44;
+  --other-soft:#EFE2DC;
+
+  --warn:#9C3B30;
+  --warn-soft:#F4E2DF;
+
+  --radius: 3px;
+  --serif: 'Fraunces', serif;
+  --sans: 'Source Sans 3', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+
+.tabular{ font-variant-numeric: tabular-nums; }
+
+/* ===== Masthead ===== */
+.masthead{
+  border-bottom:2px solid var(--ink);
+  padding:28px 40px 18px;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  flex-wrap:wrap;
+  gap:12px;
+}
+.masthead .title{
+  font-family:var(--serif);
+  font-weight:500;
+  font-size:34px;
+  letter-spacing:-0.01em;
+}
+.masthead .title em{
+  font-style:italic;
+  color:var(--isa);
+}
+.masthead .subtitle{
+  font-size:13px;
+  color:var(--ink-soft);
+  margin-top:4px;
+  max-width:520px;
+}
+.masthead .taxyear{
+  font-family:var(--mono);
+  font-size:12px;
+  text-align:right;
+  color:var(--ink-soft);
+  border:1px solid var(--rule-strong);
+  padding:6px 10px;
+  border-radius:var(--radius);
+  background:var(--paper-dim);
+}
+.masthead .taxyear strong{ color:var(--ink); display:block; font-size:13px; }
+
+/* ===== Layout ===== */
+.layout{
+  display:grid;
+  grid-template-columns: 480px 1fr;
+  gap:0;
+  min-height:100vh;
+}
+@media (max-width: 980px){
+  .layout{ grid-template-columns: 1fr; }
+}
+
+/* ===== Sidebar (inputs) ===== */
+.sidebar{
+  border-right:1px solid var(--rule);
+  padding:28px 26px 60px;
+  background:var(--paper-dim);
+  position:sticky;
+  top:0;
+  align-self:start;
+  height:100vh;
+  overflow-y:auto;
+  scrollbar-width:thin;
+  scrollbar-color:var(--rule-strong) var(--paper-dim);
+}
+.sidebar::-webkit-scrollbar{ width:9px; }
+.sidebar::-webkit-scrollbar-track{ background:var(--paper-dim); }
+.sidebar::-webkit-scrollbar-thumb{ background:var(--rule-strong); border-radius:5px; }
+.sidebar::-webkit-scrollbar-thumb:hover{ background:var(--ink-soft); }
+@media (max-width: 980px){
+  .sidebar{ position:static; height:auto; overflow-y:visible; }
+}
+.field-group{ margin-bottom:26px; }
+.field-group h3{
+  font-family:var(--mono);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:var(--ink-soft);
+  margin-bottom:12px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.field-group h3::after{
+  content:'';
+  flex:1;
+  height:1px;
+  background:var(--rule);
+}
+.field{ margin-bottom:16px; }
+.field label{
+  display:flex;
+  justify-content:space-between;
+  font-size:13px;
+  margin-bottom:6px;
+  color:var(--ink);
+}
+
+/* ===== Person tabs (Partner A / Partner B switcher) ===== */
+.person-tabs{
+  display:flex;
+  gap:0;
+  margin-bottom:18px;
+  border:1px solid var(--rule-strong);
+  border-radius:var(--radius);
+  overflow:hidden;
+}
+.person-tab{
+  flex:1;
+  background:var(--paper);
+  border:none;
+  padding:9px 10px;
+  font-family:var(--sans);
+  font-size:13px;
+  font-weight:600;
+  color:var(--ink-soft);
+  cursor:pointer;
+  transition:background .15s, color .15s;
+}
+.person-tab:first-child{ border-right:1px solid var(--rule-strong); }
+.person-tab.active{
+  background:var(--ink);
+  color:var(--paper);
+}
+.person-tab:hover:not(.active){ background:var(--paper-dim); }
+
+.person-panel{ display:none; }
+.person-panel.active{ display:block; }
+.field label .val{
+  font-family:var(--mono);
+  font-weight:500;
+  color:var(--isa);
+}
+.field input[type=range]{
+  width:100%;
+  -webkit-appearance:none;
+  height:4px;
+  background:var(--rule-strong);
+  border-radius:2px;
+  outline:none;
+}
+.field input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:16px; height:16px;
+  border-radius:50%;
+  background:var(--ink);
+  cursor:pointer;
+  border:2px solid var(--paper);
+  box-shadow:0 0 0 1px var(--ink);
+}
+.field input[type=range]::-moz-range-thumb{
+  width:16px; height:16px;
+  border-radius:50%;
+  background:var(--ink);
+  cursor:pointer;
+  border:2px solid var(--paper);
+}
+.field input[type=number], .field input[type=text]{
+  width:100%;
+  font-family:var(--mono);
+  font-size:14px;
+  padding:7px 9px;
+  border:1px solid var(--rule-strong);
+  border-radius:var(--radius);
+  background:var(--paper);
+  color:var(--ink);
+}
+.field input[type=number]:focus, .field input[type=text]:focus, select:focus{
+  outline:2px solid var(--isa);
+  outline-offset:1px;
+}
+.field-row{ display:flex; gap:10px; }
+.field-row .field{ flex:1; }
+.field .hint{ font-size:11.5px; color:var(--ink-soft); margin-top:4px; line-height:1.4; }
+
+.bucket-input{
+  border-left:3px solid var(--rule-strong);
+  padding-left:12px;
+  margin-bottom:14px;
+}
+.bucket-input.isa{ border-left-color:var(--isa); }
+.bucket-input.pen-tax{ border-left-color:var(--pen-tax); }
+.bucket-input.pen-free{ border-left-color:var(--pen-free); }
+.bucket-input.other-tax{ border-left-color:var(--other); }
+.bucket-input label{ font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:0.03em; }
+
+.bucket-growth-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top:8px;
+}
+.bucket-growth-row span{
+  font-size:11.5px;
+  color:var(--ink-soft);
+  flex-shrink:0;
+  white-space:nowrap;
+}
+.bucket-growth-row .val{
+  font-family:var(--mono);
+  color:var(--ink);
+  font-weight:500;
+}
+.bucket-growth-row input[type=range]{
+  flex:1;
+  -webkit-appearance:none;
+  height:3px;
+  background:var(--rule-strong);
+  border-radius:2px;
+  outline:none;
+}
+.bucket-growth-row input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:13px; height:13px;
+  border-radius:50%;
+  background:var(--ink);
+  cursor:pointer;
+  border:2px solid var(--paper);
+  box-shadow:0 0 0 1px var(--ink);
+}
+.bucket-growth-row input[type=range]::-moz-range-thumb{
+  width:13px; height:13px;
+  border-radius:50%;
+  background:var(--ink);
+  cursor:pointer;
+  border:2px solid var(--paper);
+}
+
+.toggle-row{
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:13px; padding:8px 0;
+}
+.switch{
+  position:relative; width:38px; height:21px; flex-shrink:0;
+}
+.switch input{ opacity:0; width:0; height:0; }
+.slider-pill{
+  position:absolute; cursor:pointer; inset:0;
+  background:var(--rule-strong); border-radius:20px; transition:.15s;
+}
+.slider-pill::before{
+  content:''; position:absolute; width:15px; height:15px; left:3px; bottom:3px;
+  background:white; border-radius:50%; transition:.15s;
+}
+.switch input:checked + .slider-pill{ background:var(--isa); }
+.switch input:checked + .slider-pill::before{ transform:translateX(17px); }
+
+select{
+  width:100%;
+  font-family:var(--sans);
+  font-size:13.5px;
+  padding:7px 9px;
+  border:1px solid var(--rule-strong);
+  border-radius:var(--radius);
+  background:var(--paper);
+  color:var(--ink);
+}
+
+.strategy-note{
+  font-size:12px;
+  color:var(--ink-soft);
+  background:var(--paper);
+  border:1px dashed var(--rule-strong);
+  padding:10px 12px;
+  border-radius:var(--radius);
+  line-height:1.5;
+}
+
+/* ===== Main content ===== */
+.main{ padding:30px 40px 80px; max-width:1180px; }
+
+.section-label{
+  font-family:var(--mono);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:var(--ink-soft);
+  margin-bottom:6px;
+}
+.section-title{
+  font-family:var(--serif);
+  font-size:24px;
+  font-weight:500;
+  margin-bottom:6px;
+}
+.section-sub{
+  font-size:13.5px;
+  color:var(--ink-soft);
+  max-width:680px;
+  margin-bottom:22px;
+}
+
+/* Summary stat row */
+.stat-row{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:1px;
+  background:var(--rule-strong);
+  border:1px solid var(--rule-strong);
+  margin-bottom:36px;
+}
+@media (max-width:780px){ .stat-row{ grid-template-columns:repeat(2,1fr); } }
+.stat{
+  background:var(--paper);
+  padding:16px 18px;
+}
+.stat .label{ font-size:11.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px; }
+.stat .number{ font-family:var(--mono); font-size:22px; font-weight:500; }
+.stat .number.warn{ color:var(--warn); }
+.stat .number.good{ color:var(--isa); }
+.stat .sub{ font-size:11.5px; color:var(--ink-soft); margin-top:3px; }
+
+/* Legend */
+.legend{
+  display:flex;
+  gap:18px;
+  flex-wrap:wrap;
+  margin-bottom:18px;
+  font-size:12.5px;
+}
+.legend span.dot{
+  display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px;
+}
+.legend .item{ display:flex; align-items:center; color:var(--ink-soft); }
+
+/* Waterfall chart — horizontal bars, one row per year */
+.chart-wrap{
+  border:1px solid var(--rule-strong);
+  background:var(--paper);
+  padding:20px 24px 12px;
+  margin-bottom:14px;
+  position:relative;
+  overflow-x:auto;
+}
+.chart-scroll-inner{ min-width:680px; position:relative; }
+
+.threshold-tick{
+  position:absolute;
+  top:0; bottom:0;
+  width:0;
+  border-left:1px dashed var(--rule-strong);
+  z-index:1;
+  pointer-events:none;
+}
+.threshold-tick .tick-label{
+  position:absolute;
+  top:0;
+  left:4px;
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--ink-soft);
+  white-space:nowrap;
+  background:var(--paper);
+  padding:0 3px;
+}
+.threshold-tick.pa{ border-left-color:var(--isa); }
+.threshold-tick.basic{ border-left-color:var(--pen-tax); }
+.threshold-tick.taper{ border-left-color:var(--warn); }
+
+.bar-row{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:7px;
+  position:relative;
+  z-index:2;
+}
+.bar-row .yr-label{
+  width:78px;
+  flex-shrink:0;
+  font-family:var(--mono);
+  font-size:11.5px;
+  color:var(--ink-soft);
+  text-align:right;
+}
+.bar-row .yr-label .age-tax{ display:block; font-size:10px; color:var(--rule-strong); }
+.bar-track{
+  position:relative;
+  flex:1;
+  height:26px;
+  background:var(--paper-dim);
+  border-radius:2px;
+  display:flex;
+  overflow:visible;
+  cursor:default;
+}
+.seg{
+  height:100%;
+  transition:width .2s;
+  position:relative;
+  flex-shrink:0;
+}
+.seg:first-child{ border-radius:2px 0 0 2px; }
+.seg.isa{ background:var(--isa); }
+.seg.pen-tax{ background:var(--pen-tax); }
+.seg.pen-free{ background:var(--pen-free); }
+.seg.state{ background:var(--state); }
+.seg.other-tax{ background:var(--other); }
+.seg.depleted{ background:repeating-linear-gradient(45deg, var(--warn-soft), var(--warn-soft) 4px, var(--paper) 4px, var(--paper) 8px); }
+.bar-row:hover .seg{ filter:brightness(0.93); }
+
+.bar-row .total{
+  width:84px;
+  flex-shrink:0;
+  font-family:var(--mono);
+  font-size:11.5px;
+  text-align:right;
+  color:var(--ink-soft);
+}
+
+.chart-tooltip{
+  position:absolute;
+  pointer-events:none;
+  background:var(--ink);
+  color:var(--paper);
+  font-size:11.5px;
+  padding:8px 10px;
+  border-radius:3px;
+  z-index:10;
+  display:none;
+  min-width:180px;
+  box-shadow:0 4px 14px rgba(0,0,0,0.25);
+}
+.chart-tooltip .tt-title{
+  font-family:var(--mono);
+  font-size:11px;
+  margin-bottom:6px;
+  border-bottom:1px solid rgba(255,255,255,0.2);
+  padding-bottom:5px;
+}
+.chart-tooltip .tt-row{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  font-family:var(--mono);
+  font-size:10.5px;
+  margin-bottom:2px;
+}
+.chart-tooltip .tt-dot{
+  display:inline-block; width:7px; height:7px; border-radius:2px; margin-right:5px;
+}
+
+/* Table */
+.table-wrap{
+  border:1px solid var(--rule-strong);
+  background:var(--paper);
+  overflow-x:auto;
+  margin-bottom:36px;
+}
+table{ width:100%; border-collapse:collapse; font-size:12.5px; min-width:760px; }
+th, td{
+  padding:8px 12px;
+  text-align:right;
+  border-bottom:1px solid var(--rule);
+  white-space:nowrap;
+}
+th:first-child, td:first-child{ text-align:left; }
+thead th{
+  font-family:var(--mono);
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:0.04em;
+  color:var(--ink-soft);
+  background:var(--paper-dim);
+  border-bottom:1px solid var(--rule-strong);
+  position:sticky; top:0;
+}
+tbody tr:hover{ background:var(--paper-dim); }
+tbody tr.depleted-row{ color:var(--ink-soft); font-style:italic; }
+td.tax-cell{ color:var(--warn); font-weight:500; }
+td.isa-cell{ color:var(--isa); }
+
+/* Reference panels */
+.ref-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px;
+  margin-bottom:36px;
+}
+@media (max-width:780px){ .ref-grid{ grid-template-columns:1fr; } }
+.ref-card{
+  border:1px solid var(--rule-strong);
+  background:var(--paper);
+  padding:18px 20px;
+}
+.ref-card h4{
+  font-family:var(--serif);
+  font-size:16px;
+  font-weight:500;
+  margin-bottom:12px;
+  padding-bottom:8px;
+  border-bottom:1px solid var(--rule);
+}
+.ref-card table{ min-width:0; font-size:12px; }
+.ref-card td, .ref-card th{ padding:5px 6px; }
+.ref-card .note{ font-size:11.5px; color:var(--ink-soft); margin-top:10px; line-height:1.5; }
+
+.bucket-key{
+  display:inline-flex; align-items:center; gap:5px; font-size:11px;
+  padding:2px 7px 2px 5px; border-radius:10px; font-family:var(--mono);
+}
+.bucket-key.isa{ background:var(--isa-soft); color:var(--isa); }
+.bucket-key.pen-tax{ background:var(--pen-tax-soft); color:var(--pen-tax); }
+.bucket-key.pen-free{ background:var(--pen-free-soft); color:var(--pen-free); }
+.bucket-key.state{ background:var(--state-soft); color:var(--state); }
+.bucket-key.other-tax{ background:var(--other-soft); color:var(--other); }
+
+footer{
+  border-top:1px solid var(--rule);
+  padding:24px 40px 50px;
+  font-size:11.5px;
+  color:var(--ink-soft);
+  line-height:1.6;
+  max-width:1180px;
+}
+footer strong{ color:var(--ink); }
+
+.banner-warn{
+  background:var(--warn-soft);
+  border:1px solid var(--warn);
+  color:var(--warn);
+  padding:10px 14px;
+  border-radius:var(--radius);
+  font-size:12.5px;
+  margin-bottom:18px;
+  display:none;
+}
+.banner-warn.show{ display:block; }
+
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div>
+    <div class="title">The Drawdown <em>Ledger</em></div>
+    <div class="subtitle">A withdrawal-order planner for UK retiree couples — two people, two Personal Allowances, four buckets each. Built to minimise combined household tax, not just this year's.</div>
+  </div>
+  <div class="taxyear">TAX YEAR<strong>2026/27</strong></div>
+</div>
+
+<div class="layout">
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <div class="sidebar">
+
+    <div class="field-group">
+      <h3>Household</h3>
+      <div class="field">
+        <label>Plan until Partner A is age <span class="val" id="v-planage">95</span></label>
+        <input type="range" id="planage" min="70" max="105" value="95">
+        <div class="hint">The whole household timeline is anchored to Partner A's age. Partner B's age each year is worked out automatically from the gap between them.</div>
+      </div>
+      <div class="field">
+        <label>Combined annual spending need (today's £) <span class="val" id="v-spend">£40,000</span></label>
+        <input type="range" id="spend" min="15000" max="120000" step="500" value="40000">
+        <div class="hint">Split evenly between both partners each year, so each draws from their own buckets and uses their own Personal Allowance.</div>
+      </div>
+      <div class="field">
+        <label>Inflation — spending increases by <span class="val" id="v-inflation">2.5%</span>/yr</label>
+        <input type="range" id="inflation" min="0" max="6" step="0.1" value="2.5">
+        <div class="hint">The combined spending need rises with inflation each year, so withdrawals grow to match.</div>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <h3>Strategy</h3>
+      <div class="field">
+        <label>Withdrawal order (applied to both partners)</label>
+        <select id="strategy">
+          <option value="smart" selected>Tax-minimising (recommended)</option>
+          <option value="pa-then-even">Taxable pension to Personal Allowance, then split evenly</option>
+          <option value="myidea">MyIdea — PA, then tax-free cash, then ISA, then taxable pension</option>
+          <option value="isa-first">ISA first, then pension</option>
+          <option value="pension-first">Pension first, then ISA</option>
+          <option value="even">Even split across buckets</option>
+        </select>
+      </div>
+      <div class="strategy-note" id="strategyNote">
+        Each partner fills their own Personal Allowance with taxable pension income (using tax-free cash and state pension first), then tops up from their ISA — minimising combined household tax across the whole retirement.
+      </div>
+    </div>
+
+    <div class="field-group">
+      <h3>Partners</h3>
+      <div class="person-tabs">
+        <button type="button" class="person-tab active" data-person="a">Partner A</button>
+        <button type="button" class="person-tab" data-person="b">Partner B</button>
+      </div>
+
+      <div class="person-panel active" id="panel-a">
+        <div class="field">
+          <label>Current age <span class="val" id="v-aAge">66</span></label>
+          <input type="range" id="aAge" min="50" max="90" value="66">
+        </div>
+
+        <div class="toggle-row">
+          <span>Receives the state pension</span>
+          <label class="switch"><input type="checkbox" id="aHasState" checked><span class="slider-pill"></span></label>
+        </div>
+        <div class="field" style="margin-top:8px;">
+          <label>State pension age <span class="val" id="v-aSpa">68</span></label>
+          <input type="range" id="aSpa" min="65" max="70" value="68">
+        </div>
+        <div class="field">
+          <label>State pension annual amount <span class="val" id="v-aStateAmt">£11,973</span></label>
+          <input type="range" id="aStateAmt" min="0" max="20000" step="100" value="11973">
+          <div class="hint">Default is the full new State Pension for 2026/27. Reduce this if their National Insurance record gives a lower amount.</div>
+        </div>
+
+        <div class="bucket-input isa">
+          <label>ISA balance</label>
+          <input type="number" id="aIsaBal" value="80000" step="1000">
+          <div class="bucket-growth-row">
+            <span>Growth <span class="val" id="v-aIsaGrowth">4.0%</span>/yr</span>
+            <input type="range" id="aIsaGrowth" min="0" max="9" step="0.5" value="4">
+          </div>
+        </div>
+        <div class="bucket-input pen-free">
+          <label>Pension tax-free cash</label>
+          <input type="number" id="aPenFreeBal" value="35000" step="1000">
+          <div class="bucket-growth-row">
+            <span>Growth <span class="val" id="v-aPenFreeGrowth">3.0%</span>/yr</span>
+            <input type="range" id="aPenFreeGrowth" min="0" max="9" step="0.5" value="3">
+          </div>
+        </div>
+        <div class="bucket-input pen-tax">
+          <label>Pension taxable balance</label>
+          <input type="number" id="aPenTaxBal" value="120000" step="1000">
+          <div class="bucket-growth-row">
+            <span>Growth <span class="val" id="v-aPenTaxGrowth">3.0%</span>/yr</span>
+            <input type="range" id="aPenTaxGrowth" min="0" max="9" step="0.5" value="3">
+          </div>
+        </div>
+        <div class="bucket-input other-tax">
+          <label>Other taxable investments</label>
+          <input type="number" id="aOtherBal" value="0" step="1000">
+          <div class="bucket-growth-row">
+            <span>Growth <span class="val" id="v-aOtherGrowth">5.0%</span>/yr</span>
+            <input type="range" id="aOtherGrowth" min="0" max="9" step="0.5" value="5">
+          </div>
+        </div>
+      </div>
+
+      <div class="person-panel" id="panel-b">
+        <div class="field">
+          <label>Current age <span class="val" id="v-bAge">64</span></label>
+          <input type="range" id="bAge" min="50" max="90" value="64">
+        </div>
+
+        <div class="toggle-row">
+          <span>Receives the state pension</span>
+          <label class="switch"><input type="checkbox" id="bHasState" checked><span class="slider-pill"></span></label>
+        </div>
+        <div class="field" style="margin-top:8px;">
+          <label>State pension age <span class="val" id="v-bSpa">68</span></label>
+          <input type="range" id="bSpa" min="65" max="70" value="68">
+        </div>
+        <div class="field">
+          <label>State pension annual amount <span class="val" id="v-bStateAmt">£11,973</span></label>
+          <input type="range" id="bStateAmt" min="0" max="20000" step="100" value="11973">
+          <div class="hint">Default is the full new State Pension for 2026/27. Reduce this if their National Insurance record gives a lower amount.</div>
+        </div>
+
+        <div class="bucket-input isa">
+          <label>ISA balance</label>
+          <input type="number" id="bIsaBal" value="60000" step="1000">
+          <div class="bucket-growth-row">
+            <span>Growth <span class="val" id="v-bIsaGrowth">4.0%</span>/yr</span>
+            <input type="range" id="bIsaGrowth" min="0" max="9" step="0.5" value="4">
+          </div>
+        </div>
+        <div class="bucket-input pen-free">
+          <label>Pension tax-free cash</label>
+          <input type="number" id="bPenFreeBal" value="25000" step="1000">
+          <div class="bucket-growth-row">
+            <span>Growth <span class="val" id="v-bPenFreeGrowth">3.0%</span>/yr</span>
+            <input type="range" id="bPenFreeGrowth" min="0" max="9" step="0.5" value="3">
+          </div>
+        </div>
+        <div class="bucket-input pen-tax">
+          <label>Pension taxable balance</label>
+          <input type="number" id="bPenTaxBal" value="80000" step="1000">
+          <div class="bucket-growth-row">
+            <span>Growth <span class="val" id="v-bPenTaxGrowth">3.0%</span>/yr</span>
+            <input type="range" id="bPenTaxGrowth" min="0" max="9" step="0.5" value="3">
+          </div>
+        </div>
+        <div class="bucket-input other-tax">
+          <label>Other taxable investments</label>
+          <input type="number" id="bOtherBal" value="0" step="1000">
+          <div class="bucket-growth-row">
+            <span>Growth <span class="val" id="v-bOtherGrowth">5.0%</span>/yr</span>
+            <input type="range" id="bOtherGrowth" min="0" max="9" step="0.5" value="5">
+          </div>
+        </div>
+      </div>
+
+      <div class="strategy-note" style="margin-top:4px;">Each bucket has its own growth assumption since they're often invested differently in practice. The combined spending need splits evenly between partners each year, so each uses their own Personal Allowance.</div>
+    </div>
+
+  </div>
+
+  <!-- ===================== MAIN ===================== -->
+  <div class="main">
+
+    <div class="banner-warn" id="depletionWarning"></div>
+
+    <div class="section-label">Summary</div>
+    <div class="section-title">Your household withdrawal plan at a glance</div>
+    <div class="section-sub">Based on both partners' inputs, here's how long the combined money lasts and what it costs in combined tax under the selected strategy — each partner uses their own Personal Allowance.</div>
+
+    <div class="stat-row" id="statRow"></div>
+
+    <div class="section-label">Waterfall</div>
+    <div class="section-title">Where each year's combined spending comes from</div>
+    <div class="section-sub">Each row is one year of retirement (Partner A's age / Partner B's age). The coloured segments show the combined amount drawn from each bucket type across both partners; the dashed vertical lines mark the per-person and combined tax thresholds — line them up against the bars to see how close the household sits to the next one.</div>
+
+    <div class="legend">
+      <span class="item"><span class="dot" style="background:var(--state)"></span>State pension</span>
+      <span class="item"><span class="dot" style="background:var(--pen-free)"></span>Pension tax-free cash</span>
+      <span class="item"><span class="dot" style="background:var(--isa)"></span>ISA (tax-free)</span>
+      <span class="item"><span class="dot" style="background:var(--pen-tax)"></span>Pension (taxable)</span>
+      <span class="item"><span class="dot" style="background:var(--other)"></span>Other taxable investments</span>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-scroll-inner">
+        <div id="thresholdOverlay"></div>
+        <div id="chartBody"></div>
+        <div class="chart-tooltip" id="chartTooltip"></div>
+      </div>
+    </div>
+
+    <div class="section-label">Year by year</div>
+    <div class="section-title">The full household ledger</div>
+    <div class="section-sub">Every figure behind the chart above — what's withdrawn from where (combined across both partners), each partner's individual tax bill, and the combined total each year.</div>
+
+    <div class="table-wrap">
+      <table id="ledgerTable">
+        <thead>
+          <tr>
+            <th>Ages (A / B)</th>
+            <th>Spending need</th>
+            <th>State pension</th>
+            <th>Pension tax-free cash</th>
+            <th>ISA</th>
+            <th>Pension (taxable)</th>
+            <th>Other investments</th>
+            <th>Total income</th>
+            <th>Tax — A</th>
+            <th>Tax — B</th>
+            <th>Tax — combined</th>
+            <th>ISA balance</th>
+            <th>Pension balance</th>
+            <th>Other balance</th>
+          </tr>
+        </thead>
+        <tbody id="ledgerBody"></tbody>
+      </table>
+    </div>
+
+    <div class="section-label">Reference</div>
+    <div class="section-title">2026/27 rates &amp; thresholds used in this plan</div>
+    <div class="section-sub">HMRC figures for the 2026/27 tax year (6 April 2026 – 5 April 2027), frozen since 2021/22 and held until at least April 2031 under current government policy.</div>
+
+    <div class="ref-grid">
+
+      <div class="ref-card">
+        <h4>Income tax — England, Wales &amp; NI</h4>
+        <table>
+          <tr><th>Band</th><th>Taxable income</th><th>Rate</th></tr>
+          <tr><td>Personal Allowance</td><td>£0 – £12,570</td><td>0%</td></tr>
+          <tr><td>Basic rate</td><td>£12,571 – £50,270</td><td>20%</td></tr>
+          <tr><td>Higher rate</td><td>£50,271 – £125,140</td><td>40%</td></tr>
+          <tr><td>Additional rate</td><td>over £125,140</td><td>45%</td></tr>
+        </table>
+        <div class="note">Personal Allowance tapers by £1 for every £2 of income over £100,000 and reaches £0 at £125,140 — creating an effective <strong>60% marginal rate</strong> between £100,000–£125,140. These bands and the Personal Allowance apply <strong>separately to each partner</strong> — state pension, pension drawdown and any other income are added together to find each person's own band individually; ISA income is never included for either partner.</div>
+      </div>
+
+      <div class="ref-card">
+        <h4>Capital Gains Tax (general investment accounts only)</h4>
+        <table>
+          <tr><th>Taxpayer</th><th>Rate on gains</th></tr>
+          <tr><td>Within basic rate band</td><td>18%</td></tr>
+          <tr><td>Higher / additional rate</td><td>24%</td></tr>
+        </table>
+        <div class="note">Annual exempt amount: <strong>£3,000</strong> per person, use-it-or-lose-it. The UK does <strong>not</strong> distinguish short-term vs long-term holding periods for CGT — rate depends only on your total income plus the gain, not how long you held the asset. CGT is irrelevant inside an ISA or pension: both wrappers are entirely CGT-free, which is why this plan never generates a CGT figure for those buckets. The "other taxable investments" bucket is the exception — withdrawals there would typically trigger CGT on any gain, not income tax; this model simplifies by treating it as income tax for consistency, so treat its tax figures as indicative only.</div>
+      </div>
+
+      <div class="ref-card">
+        <h4>ISA &amp; pension wrapper rules</h4>
+        <table>
+          <tr><td>Annual ISA allowance</td><td>£20,000</td></tr>
+          <tr><td>Lifetime ISA sub-limit</td><td>£4,000</td></tr>
+          <tr><td>Pension tax-free cash</td><td>up to 25%</td></tr>
+          <tr><td>Lump Sum Allowance (lifetime cap on tax-free cash)</td><td>£268,275</td></tr>
+          <tr><td>Money Purchase Annual Allowance once you draw taxable income</td><td>£10,000/yr</td></tr>
+        </table>
+        <div class="note">ISA withdrawals are <strong>always</strong> 100% tax-free with no reporting needed. Pension withdrawals beyond the tax-free cash are taxed as ordinary income, stacked on top of your state pension. Taking any taxable pension income cuts your future pension contribution allowance to £10,000/yr (MPAA) — rarely relevant once fully retired, but worth knowing if you might return to work.</div>
+      </div>
+
+      <div class="ref-card">
+        <h4>State pension &amp; Personal Allowance — per partner</h4>
+        <table>
+          <tr><td>Full new State Pension (2026/27)</td><td>£230.25/week · £11,973/yr</td></tr>
+          <tr><td>State pension age (current)</td><td>66, rising to 67 by 2028</td></tr>
+          <tr><td>Personal Allowance left after full state pension</td><td>£597/yr <em>each</em></td></tr>
+        </table>
+        <div class="note">The full state pension alone uses almost all of one Personal Allowance, leaving very little headroom for tax-free pension drawdown for that partner — which is exactly why the ISA and tax-free cash buckets matter most once it starts. State pension is taxable income but paid gross with no tax deducted at source; any tax due on it is collected via PAYE on another pension or via Self Assessment, calculated separately for each partner.</div>
+      </div>
+
+      <div class="ref-card">
+        <h4>Why a couple's numbers aren't double a single person's</h4>
+        <table>
+          <tr><td>One person's Personal Allowance</td><td>£12,570</td></tr>
+          <tr><td>Two partners' combined allowance</td><td>£25,140</td></tr>
+          <tr><td>One person's basic-rate ceiling</td><td>£50,270</td></tr>
+          <tr><td>Two partners' combined basic-rate ceiling</td><td>£100,540</td></tr>
+        </table>
+        <div class="note">Tax is calculated <strong>separately for each partner</strong> in this model, not on the household's combined income. A couple drawing £25,140 between them — split evenly — pays no income tax at all, where a single person drawing the same total would pay tax on everything above their one £12,570 allowance. This is the single biggest lever available to a couple: splitting withdrawals so both partners use their own allowance and basic-rate band each year, rather than funnelling income through just one of them.</div>
+      </div>
+
+    </div>
+
+    <footer>
+      <strong>How the household model works:</strong> the combined annual spending need is split evenly between both partners every year, and each partner then runs the selected strategy independently across their own four buckets — using their own age, their own state pension timing, and crucially their own Personal Allowance. Income tax is calculated separately for each partner and then added together; the model never pools income before taxing it, since UK income tax doesn't work that way for a married couple or civil partnership (each person is taxed individually; there's no UK joint filing). If one partner's own buckets run dry before the other's — a common outcome when balances are uneven — the partner with spare capacity automatically covers the shortfall using their own buckets and own strategy, rather than the household being treated as "out of money" just because that year's even split happened to be uneven against their respective balances. The household is only shown as depleted once both partners are genuinely unable to find any more money between them.
+      <br><br>
+      <strong>How the strategies work:</strong> two rules apply in every strategy, for each partner individually, overriding its normal order where relevant. First, the <strong>"other taxable investments"</strong> bucket is held back as a last resort for that partner — only drawn once their own ISA, pension tax-free cash, and taxable pension balance are all fully depleted. Second, <strong>any year that would otherwise land at £0 tax for that partner</strong> is automatically topped up so that at least their own full Personal Allowance (£12,570) is drawn from their state pension plus taxable pension combined — money is swapped out of their ISA or tax-free cash and into taxable pension instead, so neither partner's allowance is left unused. This never increases what either partner withdraws overall, and never pushes a genuinely zero-tax year into owing tax. Within those two rules: the <strong>tax-minimising</strong> strategy draws state pension first, then tax-free cash, then fills the remaining Personal Allowance from taxable pension, then tops up from the ISA. The <strong>"taxable pension to Personal Allowance, then split evenly"</strong> strategy fills the Personal Allowance from taxable pension first, then splits anything further equally between ISA and tax-free cash. <strong>MyIdea</strong> fills the Personal Allowance first, then drains tax-free cash completely, then the ISA completely, before falling back to further taxable pension. All strategies use each bucket's own growth rate as set per partner in the sidebar, and ignore investment volatility, fees, platform charges, and means-tested benefit interactions.
+      <br><br>
+      <strong>This is a planning illustration, not financial or tax advice.</strong> It uses 2026/27 rates and thresholds held constant for the whole projection — in reality, allowances, thresholds and pension rules change frequently (the Personal Allowance freeze alone is currently legislated only to April 2031). It also doesn't account for the Marriage Allowance (transferring up to £1,260 of unused Personal Allowance between spouses/civil partners, available when one partner earns less than the Personal Allowance and the other is a basic-rate taxpayer) or inheritance tax planning between partners, both of which can matter for a couple's overall position. Each partner's own pension scheme rules, marginal tax position, National Insurance record, and any Scottish tax bands may differ from what's modelled here. Speak to a qualified, FCA-regulated financial adviser or use the free Pension Wise service (over age 50) before making withdrawal decisions.
+    </footer>
+
+  </div>
+</div>
+
+<script src="couple-app.js"></script>
+</body>
+</html>
