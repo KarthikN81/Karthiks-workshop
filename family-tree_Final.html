@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>The Family Tree</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!--
+  =====================================================================
+  ONE-TIME SETUP (do this before you upload the file to your host)
+  =====================================================================
+  This page can run in two modes:
+
+  1) LOCAL MODE (default, no setup needed)
+     Data is saved only in each visitor's own browser (localStorage).
+     Great for trying it out, but people won't see each other's edits.
+
+  2) SHARED MODE (recommended, ~5 minutes, free)
+     Everyone who opens the page sees the same tree, live.
+     This uses Firebase (Google's free "Firestore" database) because a
+     plain static file host (GitHub Pages, Netlify, etc.) can't run
+     server code or store data on its own.
+
+     Steps:
+       a. Go to https://console.firebase.google.com -> Add project (free).
+       b. In the project, open "Build > Firestore Database" -> Create
+          database -> Start in TEST MODE (or set the rules below).
+       c. Go to Project settings (gear icon) > General > Your apps >
+          "</> Web app" > register an app (no hosting needed) and copy
+          the "firebaseConfig" object it gives you.
+       d. Paste those values into FIREBASE_CONFIG below, replacing the
+          placeholder object.
+       e. In Firestore > Rules, paste this (since editing is fully
+          open, anyone with the link can read/write this one document):
+
+            rules_version = '2';
+            service cloud.firestore {
+              match /databases/{database}/documents {
+                match /familyTree/{docId} {
+                  allow read, write: if true;
+                }
+              }
+            }
+
+       f. Save, then upload this HTML file to your static host as usual.
+
+     Note: "fully open" means anyone with the link can add, edit, or
+     delete anyone's entry. There's no login and no undo history beyond
+     the Export JSON backups you take. Use Export JSON occasionally so
+     you can restore the tree if someone makes a mistake.
+  =====================================================================
+-->
+
+<style>
+  :root{
+    --bg-deep:#0d1017;
+    --bg-deep-2:#080a0f;
+    --panel:#171c27;
+    --panel-border:rgba(201,162,75,.22);
+    --parchment:#f3e8cf;
+    --parchment-dim:#e6d7b3;
+    --ink:#2c2317;
+    --ink-soft:#6b5b45;
+    --gold:#c9a24b;
+    --gold-bright:#e8c876;
+    --sage:#63806a;
+    --rose:#b5495b;
+    --teal:#3f7f80;
+    --text:#eef0f4;
+    --text-dim:#8d95a8;
+    --danger:#c1584f;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg-deep);color:var(--text);
+    font-family:'Inter',sans-serif; overflow:hidden;}
+  .display{font-family:'Fraunces',serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  #stage{
+    position:fixed; inset:0; overflow:hidden;
+    background:
+      radial-gradient(ellipse 1200px 800px at 50% 20%, #1a2130 0%, var(--bg-deep) 55%, var(--bg-deep-2) 100%);
+    cursor:grab;
+  }
+  #stage.dragging{cursor:grabbing;}
+  #stage::before{ /* faint starfield texture */
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:.5;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.25) 0, transparent 100%),
+      radial-gradient(1px 1px at 70% 65%, rgba(255,255,255,.18) 0, transparent 100%),
+      radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,.2) 0, transparent 100%),
+      radial-gradient(1px 1px at 85% 15%, rgba(255,255,255,.2) 0, transparent 100%),
+      radial-gradient(1px 1px at 55% 45%, rgba(255,255,255,.15) 0, transparent 100%);
+    background-size:100% 100%;
+  }
+
+  #svgOverlay{position:absolute; inset:0; width:100%; height:100%; pointer-events:none;}
+
+  #world{position:absolute; left:50%; top:50%;}
+  #nodesLayer{position:absolute; left:0; top:0;}
+
+  .node{
+    position:absolute; width:172px; margin-left:-86px; margin-top:-54px;
+    background:linear-gradient(180deg,var(--parchment),var(--parchment-dim));
+    border:1px solid var(--gold);
+    border-radius:7px;
+    box-shadow:0 10px 24px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.05) inset;
+    color:var(--ink);
+    padding:10px 12px 9px;
+    cursor:pointer;
+    user-select:none;
+    transition:box-shadow .15s, transform .1s;
+  }
+  .node:hover{box-shadow:0 12px 30px rgba(0,0,0,.55), 0 0 0 2px var(--gold-bright);}
+  .node.selected{box-shadow:0 12px 30px rgba(0,0,0,.55), 0 0 0 2px var(--rose);}
+  .node.you{box-shadow:0 12px 30px rgba(0,0,0,.55), 0 0 0 2px var(--teal);}
+  .node.kin-highlight{box-shadow:0 12px 30px rgba(0,0,0,.55), 0 0 0 2px var(--gold-bright);}
+  .node.dimmed{opacity:.28; filter:grayscale(.55); box-shadow:0 6px 14px rgba(0,0,0,.35);}
+  .node.dimmed:hover{opacity:.55;}
+  .node .row{display:flex; align-items:center; gap:8px;}
+  .node .info{flex:1; min-width:0;}
+  .avatar{
+    width:28px; height:28px; border-radius:50%; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700; color:#fff; font-family:'Inter',sans-serif;
+  }
+  .avatar.g-m{background:var(--teal);}
+  .avatar.g-f{background:var(--rose);}
+  .avatar.g-o{background:var(--gold);}
+  .node .name{font-family:'Fraunces',serif; font-weight:600; font-size:14.5px; line-height:1.22;
+    overflow:hidden; text-overflow:ellipsis; word-break:break-word;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
+  .node .name.long-name{font-size:12.5px; line-height:1.18;}
+  .node .years{font-size:10.5px; color:var(--ink-soft); letter-spacing:.03em; margin-top:2px;}
+  .node .tag{position:absolute; top:-9px; right:8px; background:var(--sage); color:#fff;
+    font-size:9px; letter-spacing:.06em; padding:2px 6px; border-radius:9px; text-transform:uppercase;}
+
+  .child-collapse-btn{
+    position:absolute; left:50%; bottom:-13px; width:26px; height:26px; margin-left:-13px;
+    border-radius:50%; background:var(--panel); border:1px solid var(--gold); color:var(--gold-bright);
+    font-size:13px; line-height:1; padding:0; font-family:inherit;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,.4); z-index:6; backface-visibility:hidden;
+    transition:background .15s, transform .1s;
+  }
+  .child-collapse-btn:hover{ background:#232b3b; transform:scale(1.08); }
+
+  .collapse-indicator{
+    position:absolute; left:0; top:0;
+    background:var(--gold); color:#1b1305; font-weight:700; font-size:12.5px;
+    padding:5px 11px; border-radius:14px; white-space:nowrap; cursor:pointer;
+    box-shadow:0 6px 14px rgba(0,0,0,.4); border:1px solid var(--gold-bright);
+    transition:background .15s, transform .1s; z-index:4;
+  }
+  .collapse-indicator:hover{ background:var(--gold-bright); }
+  .collapse-indicator.dimmed{ opacity:.28; filter:grayscale(.5); }
+  .collapse-indicator.kin-highlight{ box-shadow:0 6px 14px rgba(0,0,0,.4), 0 0 0 2px var(--rose); }
+
+  /* Toolbar */
+  #toolbar{position:absolute; top:0; left:0; right:0; z-index:20;
+    display:flex; align-items:center; gap:10px; padding:14px 18px;
+    background:linear-gradient(180deg, rgba(8,10,15,.85), rgba(8,10,15,0));
+    pointer-events:none;}
+  #toolbar > *{pointer-events:auto;}
+  #brand{display:flex; align-items:baseline; gap:8px; margin-right:8px;}
+  #brand .title{font-family:'Fraunces',serif; font-weight:700; font-size:19px; letter-spacing:.01em;}
+  #brand .sub{font-size:10.5px; color:var(--text-dim); letter-spacing:.05em;}
+  .toolbtn{
+    background:var(--panel); border:1px solid var(--panel-border); color:var(--text);
+    padding:8px 12px; border-radius:6px; font-size:12.5px; cursor:pointer; letter-spacing:.02em;
+    display:flex; align-items:center; gap:6px; white-space:nowrap;
+    transition:border-color .15s, background .15s;
+  }
+  .toolbtn:hover{border-color:var(--gold); background:#1d2432;}
+  .toolbtn:disabled{opacity:.35; cursor:default; border-color:var(--panel-border); background:var(--panel);}
+  .toolbtn.primary{background:var(--gold); color:#1b1305; border-color:var(--gold); font-weight:600;}
+  .toolbtn.primary:hover{background:var(--gold-bright);}
+  #spacer{flex:1;}
+  #zoomCtrl{display:flex; gap:2px;}
+  #zoomCtrl .toolbtn{padding:8px 11px;}
+
+  #modeBanner{position:absolute; top:60px; left:18px; z-index:20; max-width:340px;
+    background:rgba(23,28,39,.92); border:1px solid var(--panel-border); border-left:3px solid var(--gold);
+    padding:10px 13px; border-radius:6px; font-size:11.5px; color:var(--text-dim); display:none;}
+  #modeBanner.show{display:block;}
+  #modeBanner b{color:var(--gold-bright);}
+
+  #emptyState{position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:15;}
+  #emptyState.show{display:flex;}
+  #emptyState .box{text-align:center; max-width:380px;}
+  #emptyState h1{font-family:'Fraunces',serif; font-size:30px; margin:0 0 8px;}
+  #emptyState p{color:var(--text-dim); font-size:13.5px; margin:0 0 18px; line-height:1.5;}
+
+  /* Inspector panel */
+  #inspector{
+    position:fixed; top:0; right:0; height:100%; width:340px; max-width:92vw;
+    background:var(--panel); border-left:1px solid var(--panel-border);
+    transform:translateX(100%); transition:transform .25s ease; z-index:30;
+    display:flex; flex-direction:column; box-shadow:-20px 0 40px rgba(0,0,0,.4);
+  }
+  #inspector.open{transform:translateX(0);}
+  #inspector .head{padding:18px 18px 14px; border-bottom:1px solid var(--panel-border);
+    display:flex; justify-content:space-between; align-items:flex-start;}
+  #inspector .head h2{font-family:'Fraunces',serif; margin:0; font-size:20px;}
+  #inspector .headYears{color:var(--text-dim); font-size:12px; margin-top:3px;}
+  #inspector .closeBtn{background:none; border:none; color:var(--text-dim); font-size:18px; cursor:pointer; line-height:1;}
+  #inspPinBtn{padding:6px 10px; font-size:11px;}
+  #inspPinBtn.active{background:var(--gold); color:#1b1305; border-color:var(--gold);}
+  .node .pin-tag{position:absolute; top:-9px; left:8px; background:var(--gold); color:#1b1305;
+    font-size:9px; letter-spacing:.06em; padding:2px 6px; border-radius:9px;}
+  #inspector .body{padding:16px 18px; overflow-y:auto; flex:1;}
+  #inspector .section-label{font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--gold);
+    margin:18px 0 8px;}
+  #inspector .section-label:first-child{margin-top:0;}
+  .relBtns{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .relBtns .toolbtn{justify-content:center;}
+  .kinList{font-size:12.5px; color:var(--text-dim); line-height:1.7;}
+  .kinList a{color:var(--text); text-decoration:none; border-bottom:1px dotted var(--text-dim); cursor:pointer;}
+  .kinList a:hover{color:var(--gold-bright); border-color:var(--gold-bright);}
+  .kinItem{display:inline-flex; align-items:center; gap:4px;}
+  .kinUnlink{background:none; border:none; color:var(--text-dim); font-size:10px; cursor:pointer;
+    padding:2px 3px; line-height:1; border-radius:3px;}
+  .kinUnlink:hover{color:var(--danger); background:rgba(193,88,79,.15);}
+  #inspector .foot{padding:14px 18px; border-top:1px solid var(--panel-border); display:flex; gap:8px;}
+  .field{margin-bottom:10px;}
+  .field label{display:block; font-size:11px; color:var(--text-dim); margin-bottom:4px;}
+  .field input, .field select, .field textarea{
+    width:100%; background:#0e121b; border:1px solid var(--panel-border); color:var(--text);
+    padding:8px 9px; border-radius:5px; font-size:13px; font-family:inherit;
+  }
+  .field textarea{resize:vertical; min-height:52px;}
+
+  /* Modal (add relative) */
+  #modalOverlay{position:fixed; inset:0; background:rgba(5,6,10,.6); display:none;
+    align-items:center; justify-content:center; z-index:40;}
+  #modalOverlay.show{display:flex;}
+  #modalBox{background:var(--panel); border:1px solid var(--panel-border); border-radius:8px;
+    width:380px; max-width:90vw; padding:20px;}
+  #modalBox h3{font-family:'Fraunces',serif; margin:0 0 4px;}
+  #modalBox .modalSub{color:var(--text-dim); font-size:12px; margin-bottom:14px;}
+  .modeTabs{display:flex; gap:6px; margin-bottom:14px; background:#0e121b; border-radius:6px; padding:3px;}
+  .modeTab{flex:1; background:none; border:none; color:var(--text-dim); padding:7px 8px; border-radius:5px;
+    font-size:12px; cursor:pointer; font-family:inherit; transition:background .15s, color .15s;}
+  .modeTab.active{background:var(--gold); color:#1b1305; font-weight:600;}
+  #modalBox .actions{display:flex; justify-content:flex-end; gap:8px; margin-top:16px;}
+
+  #toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--panel); border:1px solid var(--gold); color:var(--text); padding:10px 16px;
+    border-radius:6px; font-size:12.5px; z-index:50; opacity:0; pointer-events:none; transition:opacity .2s, transform .2s;}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--panel-border); border-radius:4px;}
+
+  @media (max-width:640px){
+    #toolbar{flex-wrap:wrap;}
+    #brand{width:100%;}
+  }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <svg id="svgOverlay"></svg>
+  <div id="world">
+    <div id="nodesLayer"></div>
+  </div>
+</div>
+
+<div id="emptyState">
+  <div class="box">
+    <h1 class="display">Every family starts with one name.</h1>
+    <p>Add yourself first — everyone else branches out from there: parents, siblings, a partner, children, grandparents, aunts, uncles, cousins.</p>
+    <button class="toolbtn primary" id="addMeBtn">+ Add yourself</button>
+  </div>
+</div>
+
+<div id="toolbar">
+  <div id="brand">
+    <span class="title display">The Family Tree</span>
+    <span class="sub">tap a card to add relatives</span>
+  </div>
+  <div id="spacer"></div>
+  <div id="zoomCtrl">
+    <button class="toolbtn" id="zoomOut">–</button>
+    <button class="toolbtn" id="zoomIn">+</button>
+  </div>
+  <button class="toolbtn" id="undoBtn" disabled>↶ Undo</button>
+  <button class="toolbtn" id="redoBtn" disabled>↷ Redo</button>
+  <button class="toolbtn" id="resetViewBtn">Reset view</button>
+  <button class="toolbtn" id="exportBtn">Export JSON</button>
+  <button class="toolbtn" id="importBtn">Import JSON</button>
+  <input type="file" id="importFile" accept="application/json" style="display:none;">
+  <button class="toolbtn" id="setupBtn">Setup / sharing</button>
+</div>
+
+<div id="modeBanner"></div>
+
+<!-- Inspector -->
+<div id="inspector">
+  <div class="head">
+    <div>
+      <h2 class="display" id="inspName">—</h2>
+      <div class="headYears" id="inspYears">—</div>
+    </div>
+    <div style="display:flex; gap:6px; align-items:flex-start;">
+      <button class="toolbtn" id="inspPinBtn" title="Keep this person (and their partner/children) always visible, never folded into a sibling group">📌 Pin</button>
+      <button class="closeBtn" id="inspClose">✕</button>
+    </div>
+  </div>
+  <div class="body">
+    <div class="section-label">Add a relative</div>
+    <div class="relBtns">
+      <button class="toolbtn" data-rel="parent">+ Parent</button>
+      <button class="toolbtn" data-rel="sibling">+ Sibling</button>
+      <button class="toolbtn" data-rel="spouse">+ Partner</button>
+      <button class="toolbtn" data-rel="child">+ Child</button>
+    </div>
+
+    <div class="section-label">Parents</div>
+    <div class="kinList" id="kinParents">—</div>
+
+    <div class="section-label">Siblings</div>
+    <div class="kinList" id="kinSiblings">—</div>
+
+    <div class="section-label">Partner(s)</div>
+    <div class="kinList" id="kinSpouses">—</div>
+
+    <div class="section-label">Children</div>
+    <div class="kinList" id="kinChildren">—</div>
+
+    <div class="section-label">Notes</div>
+    <div class="field"><textarea id="inspNotes" placeholder="Anything worth remembering…"></textarea></div>
+  </div>
+  <div class="foot">
+    <button class="toolbtn" id="inspEditBtn" style="flex:1;">Edit details</button>
+    <button class="toolbtn" id="inspDeleteBtn" style="color:var(--danger);">Delete</button>
+  </div>
+</div>
+
+<!-- Generic modal for add/edit person -->
+<div id="modalOverlay">
+  <div id="modalBox">
+    <h3 class="display" id="modalTitle">Add person</h3>
+    <div class="modalSub" id="modalSub"></div>
+
+    <div class="modeTabs" id="modeTabs">
+      <button class="modeTab active" id="tabNew" type="button">New person</button>
+      <button class="modeTab" id="tabExisting" type="button">Link existing</button>
+    </div>
+
+    <div id="newPersonFields">
+      <div class="field"><label>Full name</label><input id="fName" type="text" placeholder="e.g. Margaret Whitfield"></div>
+      <div class="field"><label>Gender (for the avatar colour only)</label>
+        <select id="fGender"><option value="o">Unspecified</option><option value="f">Female</option><option value="m">Male</option></select>
+      </div>
+      <div class="field"><label>Birth year</label><input id="fBirth" type="text" placeholder="e.g. 1958"></div>
+      <div class="field"><label>Death year (leave blank if living)</label><input id="fDeath" type="text" placeholder=""></div>
+    </div>
+
+    <div id="existingPersonFields" style="display:none;">
+      <div class="field">
+        <label>Find the person already on the tree</label>
+        <input id="fExistingSearch" type="text" list="existingPeopleList" placeholder="Start typing a name…" autocomplete="off">
+        <datalist id="existingPeopleList"></datalist>
+      </div>
+      <div class="modalSub" style="margin-bottom:0;">This connects two people who are both already on the tree — handy for linking your side of the family to your partner's, or attaching a cousin's family into the main tree.</div>
+    </div>
+
+    <div class="actions">
+      <button class="toolbtn" id="modalCancel">Cancel</button>
+      <button class="toolbtn primary" id="modalSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- Firebase (compat SDK). If FIREBASE_CONFIG below is left as placeholders,
+     the app quietly runs in local-only mode instead. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================
+   1. CONFIG — edit this before you deploy, for shared mode
+   ========================================================= */
+const FIREBASE_CONFIG = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
+};
+const SHARED_MODE = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY";
+const DOC_PATH = ["familyTree", "data"]; // collection, doc id
+
+/* =========================================================
+   2. STATE
+   ========================================================= */
+let data = { nodes: {}, collapsedGroups: {}, pinnedIds: {} };      // nodes[id] = {id,name,gender,birth,death,notes,generation,parents[],spouses[],children[],x,y,z}
+let selectedId = null;
+let db = null;
+let saveTimer = null;
+let suppressRemoteEcho = false;
+
+const MAX_HISTORY = 50;
+let undoStack = [];
+let redoStack = [];
+function snapshotData(){ return JSON.parse(JSON.stringify(data)); }
+function pushHistory(){
+  undoStack.push(snapshotData());
+  if(undoStack.length > MAX_HISTORY) undoStack.shift();
+  redoStack = [];
+  updateUndoRedoButtons();
+}
+function doUndo(){
+  if(!undoStack.length) return;
+  redoStack.push(snapshotData());
+  data = undoStack.pop();
+  persist();
+  renderAll();
+  updateUndoRedoButtons();
+}
+function doRedo(){
+  if(!redoStack.length) return;
+  undoStack.push(snapshotData());
+  data = redoStack.pop();
+  persist();
+  renderAll();
+  updateUndoRedoButtons();
+}
+function updateUndoRedoButtons(){
+  const u = document.getElementById('undoBtn'), r = document.getElementById('redoBtn');
+  if(u) u.disabled = undoStack.length === 0;
+  if(r) r.disabled = redoStack.length === 0;
+}
+
+const LOCAL_KEY = "family-tree-local-v1";
+
+function uid(){ return 'p_' + Math.random().toString(36).slice(2,10); }
+
+function emptyData(){ return { nodes:{}, collapsedGroups:{}, pinnedIds:{} }; }
+function ensureShape(d){
+  d.collapsedGroups = d.collapsedGroups || {};
+  d.pinnedIds = d.pinnedIds || {};
+  return d;
+}
+
+/* ---------- persistence ---------- */
+function loadLocal(){
+  try{
+    const raw = localStorage.getItem(LOCAL_KEY);
+    return raw ? ensureShape(JSON.parse(raw)) : emptyData();
+  }catch(e){ return emptyData(); }
+}
+function saveLocal(d){
+  try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(d)); }catch(e){}
+}
+
+function initStorage(){
+  if(SHARED_MODE){
+    try{
+      const app = firebase.initializeApp(FIREBASE_CONFIG);
+      db = firebase.firestore();
+      const ref = db.collection(DOC_PATH[0]).doc(DOC_PATH[1]);
+      ref.get().then(snap=>{
+        if(!snap.exists){
+          ref.set(emptyData()).catch(()=>{});
+        }
+      });
+      ref.onSnapshot(snap=>{
+        if(!snap.exists) return;
+        const remote = snap.data();
+        if(remote && remote.nodes){
+          suppressRemoteEcho = true;
+          data = ensureShape(remote);
+          renderAll();
+          suppressRemoteEcho = false;
+        }
+      }, err=>{
+        console.error("Firestore listen error", err);
+        showToast("Couldn't reach the shared database — check Setup.");
+      });
+      showBanner(false);
+    }catch(e){
+      console.error(e);
+      showToast("Shared mode failed to start — falling back to local-only.");
+      data = loadLocal();
+      showBanner(true);
+    }
+  } else {
+    data = loadLocal();
+    showBanner(true);
+  }
+}
+
+function persist(){
+  if(SHARED_MODE && db){
+    if(suppressRemoteEcho) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=>{
+      db.collection(DOC_PATH[0]).doc(DOC_PATH[1]).set(data).catch(err=>{
+        console.error(err); showToast("Couldn't save — check your connection.");
+      });
+    }, 250);
+  } else {
+    saveLocal(data);
+  }
+}
+
+function showBanner(show){
+  const el = document.getElementById('modeBanner');
+  if(show){
+    el.innerHTML = "<b>Local-only mode.</b> This tree is only saved in your browser. Click <b>Setup / sharing</b> above to make it live for everyone with the link.";
+    el.classList.add('show');
+  } else {
+    el.classList.remove('show');
+  }
+}
+
+/* =========================================================
+   3. DATA HELPERS
+   ========================================================= */
+function node(id){ return data.nodes[id]; }
+function allNodes(){ return Object.values(data.nodes); }
+
+/* ---------- ancestor/descendant checks, used to stop someone linking an
+   existing person in a way that would create an impossible loop ---------- */
+function isDescendant(ancestorId, targetId){
+  const seen = new Set();
+  const stack = [ancestorId];
+  while(stack.length){
+    const id = stack.pop();
+    if(id === targetId) return true;
+    if(seen.has(id)) continue;
+    seen.add(id);
+    const n = node(id);
+    if(n) n.children.forEach(cid=> stack.push(cid));
+  }
+  return false;
+}
+
+function createNode(fields, generation){
+  const n = {
+    id: uid(), name: fields.name || "Unnamed", gender: fields.gender||'o',
+    birth: fields.birth||'', death: fields.death||'', notes:'',
+    generation: generation, parents:[], spouses:[], children:[]
+  };
+  data.nodes[n.id] = n;
+  return n;
+}
+
+function linkParentChild(parentId, childId){
+  const p = node(parentId), c = node(childId);
+  if(!p || !c) return;
+  if(!p.children.includes(childId)) p.children.push(childId);
+  if(!c.parents.includes(parentId)) c.parents.push(parentId);
+}
+function unlinkParentChild(parentId, childId){
+  const p = node(parentId), c = node(childId);
+  if(p) p.children = p.children.filter(x=>x!==childId);
+  if(c) c.parents = c.parents.filter(x=>x!==parentId);
+}
+function linkSpouses(a,b){
+  const na=node(a), nb=node(b);
+  if(!na||!nb) return;
+  if(!na.spouses.includes(b)) na.spouses.push(b);
+  if(!nb.spouses.includes(a)) nb.spouses.push(a);
+}
+function unlinkSpouses(a,b){
+  const na=node(a), nb=node(b);
+  if(na) na.spouses = na.spouses.filter(x=>x!==b);
+  if(nb) nb.spouses = nb.spouses.filter(x=>x!==a);
+}
+
+function addRelative(kind, refId, fields){
+  const ref = node(refId);
+  if(!ref) return null;
+  let created = null;
+
+  if(kind === 'parent'){
+    created = createNode(fields, ref.generation - 1);
+    linkParentChild(created.id, ref.id);
+    // if ref already has one parent, marry the new one to them
+    if(ref.parents.length === 2){
+      const other = ref.parents.find(pid=>pid!==created.id);
+      if(other) linkSpouses(created.id, other);
+    }
+  }
+  else if(kind === 'sibling'){
+    created = createNode(fields, ref.generation);
+    ref.parents.forEach(pid=> linkParentChild(pid, created.id));
+  }
+  else if(kind === 'spouse'){
+    created = createNode(fields, ref.generation);
+    linkSpouses(ref.id, created.id);
+  }
+  else if(kind === 'child'){
+    created = createNode(fields, ref.generation + 1);
+    linkParentChild(ref.id, created.id);
+    if(ref.spouses.length === 1){
+      linkParentChild(ref.spouses[0], created.id);
+    }
+  }
+  persist();
+  return created;
+}
+
+/* Link an ALREADY EXISTING person into a new relationship with ref, instead
+   of creating a brand new card — this is how two branches of the tree (e.g.
+   your side and your partner's side) get connected to each other. */
+function linkExisting(kind, refId, existingId){
+  const ref = node(refId), other = node(existingId);
+  if(!ref || !other) return { ok:false, reason:'Person not found.' };
+  if(ref.id === other.id) return { ok:false, reason:"That's the same person." };
+
+  if(kind === 'parent'){
+    if(isDescendant(ref.id, other.id)){
+      return { ok:false, reason:`${other.name} is already a descendant of ${ref.name}, so they can't also be a parent.` };
+    }
+    if(ref.parents.includes(other.id)) return { ok:false, reason:`${other.name} is already linked as a parent.` };
+    linkParentChild(other.id, ref.id);
+    if(ref.parents.length === 2){
+      const partner = ref.parents.find(pid=>pid!==other.id);
+      if(partner) linkSpouses(other.id, partner);
+    }
+  }
+  else if(kind === 'sibling'){
+    if(!ref.parents.length) return { ok:false, reason:`Add a parent to ${ref.name} first, so the sibling link has something to attach to.` };
+    ref.parents.forEach(pid=> linkParentChild(pid, other.id));
+  }
+  else if(kind === 'spouse'){
+    if(ref.spouses.includes(other.id)) return { ok:false, reason:'They are already linked as partners.' };
+    linkSpouses(ref.id, other.id);
+  }
+  else if(kind === 'child'){
+    if(isDescendant(other.id, ref.id)){
+      return { ok:false, reason:`${other.name} is already an ancestor of ${ref.name}, so they can't also be a child.` };
+    }
+    if(ref.children.includes(other.id)) return { ok:false, reason:`${other.name} is already linked as a child.` };
+    linkParentChild(ref.id, other.id);
+    if(ref.spouses.length === 1){
+      linkParentChild(ref.spouses[0], other.id);
+    }
+  }
+  persist();
+  return { ok:true };
+}
+
+function updateNodeFields(id, fields){
+  const n = node(id); if(!n) return;
+  n.name = fields.name || n.name;
+  n.gender = fields.gender || n.gender;
+  n.birth = fields.birth;
+  n.death = fields.death;
+  persist();
+}
+
+/* =========================================================
+   3b. CHILDREN COLLAPSING — clicking the ⌄ button on a person's card folds
+   their children into one "N children" card, so a big family doesn't have
+   to sprawl across the whole canvas. This is manual only, triggered from
+   the card itself; there's no automatic threshold.
+
+   Whoever you're currently looking at (the selected card) and the tree's
+   root person are never folded — they, their partner, and their children
+   always render individually. Anyone else who gets folded takes their
+   partner and their direct children with them (and that child's partner,
+   so nobody's left as a stray card) — but folding stops there; grandchildren
+   of a folded person still get their own card, correctly positioned under
+   their (folded) parent.
+   ========================================================= */
+function groupKeyForNode(n){
+  return n.parents.length ? n.parents.slice().sort().join('|') : null;
+}
+function buildChildGroups(){
+  const groups = {};
+  allNodes().forEach(n=>{
+    const key = groupKeyForNode(n);
+    if(!key) return;
+    if(!groups[key]) groups[key] = { key, parentIds: n.parents.slice(), children: [] };
+    groups[key].children.push(n.id);
+  });
+  return groups;
+}
+/* Returns { clusters, renderHidden:Set<id>, anchorOf:{personId->groupKey} } */
+function computeClusters(){
+  const groups = buildChildGroups();
+  const clusters = {};
+  const renderHidden = new Set();
+  const anchorOf = {};
+
+  const exempt = new Set();
+  if(data.rootId) exempt.add(data.rootId);
+  if(selectedId) exempt.add(selectedId);
+  Object.keys(data.pinnedIds).forEach(id=> exempt.add(id));
+
+  const foldInto = (id, key)=>{
+    if(exempt.has(id)) return; // pinned / root / currently-selected people never fold, even via an indirect path (e.g. marrying into a folded family)
+    if(renderHidden.has(id)) return;
+    renderHidden.add(id);
+    if(!(id in anchorOf)) anchorOf[id] = key;
+  };
+
+  // Process oldest generation's groups first. This guarantees that when a
+  // whole family (sibling + partner + kids) folds into an outer badge, that
+  // claim happens BEFORE we'd otherwise process the kids' own (now-orphaned)
+  // sibling group — so descendants always anchor to the outermost visible
+  // badge, never to a deeper group whose own parent just went invisible.
+  const orderedGroups = Object.values(groups).sort((a,b)=>{
+    const ga = node(a.children[0]), gb = node(b.children[0]);
+    return (ga ? ga.generation : 0) - (gb ? gb.generation : 0);
+  });
+
+  orderedGroups.forEach(g=>{
+    const wantCollapsed = !!data.collapsedGroups[g.key];
+    const foldable = g.children.filter(cid=> !exempt.has(cid));
+    const clustered = wantCollapsed && foldable.length > 0;
+    clusters[g.key] = { ...g, clustered, foldable };
+    if(clustered){
+      foldable.forEach(cid=>{
+        foldInto(cid, g.key);
+        const sib = node(cid); if(!sib) return;
+        sib.spouses.forEach(sid=> foldInto(sid, g.key));
+        sib.children.forEach(kid=>{
+          foldInto(kid, g.key);
+          const k = node(kid); if(!k) return;
+          k.spouses.forEach(ksid=> foldInto(ksid, g.key)); // the nephew/niece's own partner
+        });
+      });
+    }
+  });
+
+  // A badge only ever renders where its parent(s) are visible cards (see
+  // renderClusterCards). If group X's own parents are hidden inside a
+  // bigger badge, X never gets drawn — so re-point everyone anchored to X
+  // up to whichever badge IS visible, instead of letting them vanish with
+  // no badge representing them anywhere.
+  const resolveAnchor = (key, seen)=>{
+    seen = seen || new Set();
+    if(seen.has(key)) return key; // guard against any cycle
+    seen.add(key);
+    const g = clusters[key];
+    if(!g) return key;
+    const parentAnchorKey = g.parentIds.map(pid=> anchorOf[pid]).find(k=> k && k !== key);
+    if(!parentAnchorKey) return key; // parents are visible individually — this is the outermost badge
+    return resolveAnchor(parentAnchorKey, seen);
+  };
+  Object.keys(anchorOf).forEach(id=>{ anchorOf[id] = resolveAnchor(anchorOf[id]); });
+
+  return { clusters, renderHidden, anchorOf };
+}
+function groupMemberIds(key, anchorOf){
+  return Object.keys(anchorOf).filter(id=> anchorOf[id] === key);
+}
+function expandGroup(key){ delete data.collapsedGroups[key]; persist(); renderAll(); }
+function collapseGroup(key){ data.collapsedGroups[key] = true; persist(); renderAll(); }
+/* Toggle collapsing THIS person's own children (all groups where they're a
+   parent), keeping them and their partner fully visible either way. */
+function toggleOwnChildrenCollapse(personId){
+  const groups = buildChildGroups();
+  const own = Object.values(groups).filter(g=> g.parentIds.includes(personId));
+  if(!own.length) return;
+  const anyCollapsed = own.some(g=> !!data.collapsedGroups[g.key]);
+  own.forEach(g=> anyCollapsed ? expandGroup(g.key) : collapseGroup(g.key));
+}
+function personHasCollapsibleChildren(personId, groupsCache){
+  const groups = groupsCache || buildChildGroups();
+  return Object.values(groups).some(g=> g.parentIds.includes(personId) && g.children.length > 0);
+}
+function personChildrenCurrentlyCollapsed(personId, groupsCache){
+  const groups = groupsCache || buildChildGroups();
+  const own = Object.values(groups).filter(g=> g.parentIds.includes(personId));
+  if(!own.length) return false;
+  return own.some(g=> !!data.collapsedGroups[g.key]);
+}
+
+function deleteNode(id){
+  const n = node(id); if(!n) return {ok:false, reason:"Not found."};
+  if(n.children && n.children.length){
+    return {ok:false, reason:"This person still has children linked. Remove or re-link their children first."};
+  }
+  n.parents.forEach(pid=>{ const p=node(pid); if(p) p.children = p.children.filter(x=>x!==id); });
+  n.spouses.forEach(sid=>{ const s=node(sid); if(s) s.spouses = s.spouses.filter(x=>x!==id); });
+  delete data.nodes[id];
+  persist();
+  return {ok:true};
+}
+
+/* =========================================================
+   4. LAYOUT (generations -> x,y,z)
+   ========================================================= */
+const NODE_SPACING = 210;
+const GEN_DEPTH = 260;    // vertical spacing between generation rows
+const SPOUSE_GAP = 190;
+
+function computeLayout(clustersResult){
+  const { clusters, renderHidden, anchorOf } = clustersResult;
+
+  // Wipe any position left over from a previous render on people who are
+  // now hidden — otherwise a person who *used* to be visible (before this
+  // collapse) keeps a stale x/z that can accidentally look "current" to
+  // later checks, producing a phantom pill floating at their old spot.
+  renderHidden.forEach(id=>{
+    const n = node(id);
+    if(n){ n.x = undefined; n.z = undefined; }
+  });
+
+  // A collapsed group no longer gets a row slot of its own — its "position"
+  // (used only so a still-visible deeper descendant has something to target)
+  // is derived directly from its own parent(s) once THEY'RE positioned. The
+  // indicator itself renders right on/under the parent card, not as a card
+  // taking up space in the next generation.
+  const effectiveByKey = {};
+  function effectiveNode(id){
+    if(renderHidden.has(id)){
+      const key = anchorOf[id];
+      return key ? effectiveByKey[key] : null;
+    }
+    return node(id);
+  }
+
+  const byGen = {};
+  allNodes().forEach(n=>{
+    if(renderHidden.has(n.id)) return;
+    (byGen[n.generation] = byGen[n.generation] || []).push(n);
+  });
+
+  const gens = Object.keys(byGen).map(Number).sort((a,b)=>a-b);
+
+  // Group each generation into "units": a lone person, or a person + their
+  // spouse(s) in the same generation. Units are the thing we position and
+  // sort — this is what guarantees partners always render next to each other,
+  // no matter how the barycenter sort below reorders things.
+  const genUnits = {};
+  gens.forEach(g=>{
+    const consumed = new Set();
+    const units = [];
+    byGen[g].forEach(n=>{
+      if(consumed.has(n.id)) return;
+      const partners = (n.spouses || [])
+        .map(sid=>node(sid))
+        .filter(p=>p && p.generation === g && !consumed.has(p.id) && !renderHidden.has(p.id));
+      const members = [n, ...partners];
+      members.forEach(m=>consumed.add(m.id));
+      units.push({ members });
+    });
+    genUnits[g] = units;
+  });
+
+  // first pass: naive centered placement per unit (used as a fallback target
+  // for generations with no parent data yet, e.g. root ancestors)
+  gens.forEach(g=>{
+    const units = genUnits[g];
+    const totalW = (units.length - 1) * NODE_SPACING;
+    units.forEach((u,i)=>{ u.x0 = i * NODE_SPACING - totalW/2; });
+  });
+
+  // refine, oldest generation first: each unit's target x is the average x
+  // of its members' parents (resolved through a collapsed group's effective
+  // position if that parent is itself folded). Units are then sorted by
+  // that target and re-spaced evenly so unit width (i.e. couples) never
+  // overlaps, while partners stay locked together. After each generation is
+  // placed, resolve the effective position for any collapsed group whose
+  // parents just got positioned, so the NEXT generation down can use it.
+  gens.forEach(g=>{
+    const units = genUnits[g];
+    units.forEach(u=>{
+      const targets = [];
+      u.members.forEach(m=>{
+        (m.parents || []).forEach(pid=>{
+          const p = effectiveNode(pid);
+          if(p && typeof p.x === 'number') targets.push(p.x);
+        });
+      });
+      u.target = targets.length ? (targets.reduce((a,b)=>a+b,0) / targets.length) : u.x0;
+    });
+    units.sort((a,b)=> a.target - b.target);
+
+    const widths = units.map(u => (u.members.length - 1) * SPOUSE_GAP);
+    const totalWidth = widths.reduce((a,b)=>a+b,0) + Math.max(0, units.length - 1) * NODE_SPACING;
+    let cursor = -totalWidth / 2;
+    units.forEach((u,i)=>{
+      const w = widths[i];
+      u.members.forEach((m,mi)=>{ m.x = cursor + mi * SPOUSE_GAP; });
+      cursor += w + NODE_SPACING;
+    });
+    units.forEach(u=> u.members.forEach(m=>{
+      m.y = 0;
+      m.z = g * GEN_DEPTH; // vertical row position: ancestors (negative g) sit above, descendants (positive g) sit below
+    }));
+
+    Object.values(clusters).forEach(cg=>{
+      if(!cg.clustered || effectiveByKey[cg.key]) return;
+      const parents = cg.parentIds.map(pid=>node(pid))
+        .filter(p=> p && !renderHidden.has(p.id) && p.generation === g && typeof p.x === 'number');
+      if(parents.length !== cg.parentIds.length) return; // not all parents positioned yet (or one is hidden)
+      const avgX = parents.reduce((s,p)=>s+p.x,0) / parents.length;
+      effectiveByKey[cg.key] = { x: avgX, z: parents[0].z };
+    });
+  });
+
+  return effectiveByKey;
+}
+
+/* =========================================================
+   5. RENDER
+   ========================================================= */
+const view = { panX:0, panY:0, zoom:0.9 };
+let dragging=false, dragMoved=false, lastPX=0, lastPY=0;
+const pointers = new Map();
+let pinchStartDist = 0, pinchStartZoom = 1;
+
+function applyWorldTransform(){
+  const world = document.getElementById('world');
+  world.style.transform = `translate(${view.panX}px, ${view.panY}px) scale(${view.zoom})`;
+  requestAnimationFrame(updateConnectors);
+}
+
+function nodeEl(id){ return document.querySelector(`.node[data-id="${id}"]`); }
+
+/* When a node is selected, only it + its partner(s) + parents + grandparents
+   + children stay at full visibility; everyone else is greyed out (both
+   cards and the connector lines between them). */
+function getFocusSet(){
+  if(!selectedId) return null;
+  const n = node(selectedId); if(!n) return null;
+  const set = new Set([n.id]);
+  n.spouses.forEach(sid=> set.add(sid));
+  n.parents.forEach(pid=>{
+    set.add(pid);
+    const p = node(pid);
+    if(p) p.parents.forEach(gpid=> set.add(gpid));
+  });
+  n.children.forEach(cid=> set.add(cid));
+  return set;
+}
+
+let lastAnchorOf = {};   // personId -> groupKey, for nodes folded into a badge
+function effectiveAnchorId(id){
+  return (id in lastAnchorOf) ? ('indicator:' + lastAnchorOf[id]) : id;
+}
+
+function renderAll(){
+  const clustersResult = computeClusters();
+  const { clusters, renderHidden, anchorOf } = clustersResult;
+  lastAnchorOf = anchorOf;
+
+  if(selectedId && renderHidden.has(selectedId)){
+    selectedId = null;
+    document.getElementById('inspector').classList.remove('open');
+  }
+
+  // Positions are computed for every visible person. A collapsed group no
+  // longer takes a row slot at all — its "+N" indicator derives its spot
+  // directly from its own (already-positioned) parent(s), so nothing
+  // reserves space for hidden descendants, and nothing sits on the next
+  // generation's row.
+  const effectiveByKey = computeLayout(clustersResult);
+  const wrap = document.getElementById('nodesLayer');
+  const nodesArr = allNodes().filter(n=> !renderHidden.has(n.id));
+
+  document.getElementById('emptyState').classList.toggle('show', allNodes().length === 0);
+
+  // reconcile real-person DOM
+  const existing = new Set(Array.from(wrap.querySelectorAll('.node')).map(el=>el.dataset.id));
+  const wanted = new Set(nodesArr.map(n=>n.id));
+  existing.forEach(id=>{ if(!wanted.has(id)) wrap.querySelector(`.node[data-id="${id}"]`)?.remove(); });
+
+  const focusSet = getFocusSet();
+  const groupsCache = buildChildGroups();
+
+  nodesArr.forEach(n=>{
+    let el = nodeEl(n.id);
+    if(!el){
+      el = document.createElement('div');
+      el.className = 'node';
+      el.dataset.id = n.id;
+      el.addEventListener('click', (e)=>{
+        const btn = e.target.closest('.child-collapse-btn');
+        if(btn){
+          e.stopPropagation();
+          toggleOwnChildrenCollapse(n.id);
+          return;
+        }
+        if(!dragMoved) openInspector(n.id);
+        e.stopPropagation();
+      });
+      wrap.appendChild(el);
+    }
+    el.style.transform = `translate(${n.x}px, ${n.z}px)`;
+    el.classList.toggle('selected', n.id === selectedId);
+    el.classList.toggle('kin-highlight', !!focusSet && focusSet.has(n.id) && n.id !== selectedId);
+    el.classList.toggle('dimmed', !!focusSet && !focusSet.has(n.id));
+    const initials = (n.name||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    const hasKids = personHasCollapsibleChildren(n.id, groupsCache);
+    const kidsCollapsed = hasKids && personChildrenCurrentlyCollapsed(n.id, groupsCache);
+    const nameClass = (n.name||'').length > 16 ? 'name long-name' : 'name';
+    el.innerHTML = `
+      ${n.generation===0 && n.id===data.rootId ? '<div class="tag">you</div>' : ''}
+      ${data.pinnedIds[n.id] ? '<div class="pin-tag">pinned</div>' : ''}
+      <div class="row">
+        <div class="avatar g-${n.gender}">${initials||'?'}</div>
+        <div class="info">
+          <div class="${nameClass}">${escapeHtml(n.name)}</div>
+          <div class="years">${yearsLabel(n)}</div>
+        </div>
+      </div>
+      ${hasKids && !kidsCollapsed ? `<button class="child-collapse-btn" title="Collapse children">⌄</button>` : ''}`;
+  });
+
+  renderCollapseIndicators(clusters, anchorOf, effectiveByKey, focusSet);
+
+  requestAnimationFrame(updateConnectors);
+  if(selectedId) refreshInspectorContent();
+}
+
+const INDICATOR_OFFSET = 58; // how far below the parent row the pill sits — nowhere near a full generation row down
+
+/* A small "+N" pill sitting right under the parent(s) whose children are
+   collapsed — never a full card, never on the next generation's row. It
+   uses the same "+" convention as the on-card wording: a plain count when
+   the whole sibling group folded together, "+N" when some siblings (pinned,
+   root, or whoever's selected) are still visible right next to it. */
+function renderCollapseIndicators(clusters, anchorOf, effectiveByKey, focusSet){
+  const wrap = document.getElementById('nodesLayer');
+  const clusteredGroups = Object.values(clusters).filter(g=> g.clustered && effectiveByKey[g.key]);
+  const wantedIds = new Set(clusteredGroups.map(g=> 'indicator:' + g.key));
+
+  Array.from(wrap.querySelectorAll('.collapse-indicator')).forEach(el=>{
+    if(!wantedIds.has(el.dataset.id)) el.remove();
+  });
+
+  clusteredGroups.forEach(g=>{
+    const pos = effectiveByKey[g.key];
+    const memberIds = groupMemberIds(g.key, anchorOf);
+    if(!memberIds.length) return;
+
+    const id = 'indicator:' + g.key;
+    let el = document.querySelector(`.collapse-indicator[data-id="${id}"]`);
+    if(!el){
+      el = document.createElement('div');
+      el.className = 'collapse-indicator';
+      el.dataset.id = id;
+      el.addEventListener('click', (e)=>{ e.stopPropagation(); expandGroup(g.key); });
+      wrap.appendChild(el);
+    }
+    el.style.transform = `translate(${pos.x}px, ${pos.z + INDICATOR_OFFSET}px) translate(-50%, -50%)`;
+    const inFocus = memberIds.some(mid=> focusSet && focusSet.has(mid));
+    el.classList.toggle('kin-highlight', !!focusSet && inFocus);
+    el.classList.toggle('dimmed', !!focusSet && !inFocus);
+
+    const count = g.foldable.length;
+    const noun = count === 1 ? 'child' : 'children';
+    const hasVisibleSiblings = g.children.length > g.foldable.length;
+    const prefix = hasVisibleSiblings ? '+' : '';
+    el.title = `${prefix}${count} ${noun} — tap to expand`;
+    el.textContent = `${prefix}${count} ⌃`;
+  });
+}
+
+function yearsLabel(n){
+  if(!n.birth && !n.death) return '';
+  return `${n.birth||'?'} – ${n.death||'present'}`;
+}
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+/* connector lines drawn in screen space, computed from actual rendered rects
+   so they always match the current pan/zoom regardless of scroll or drag */
+function updateConnectors(){
+  const svg = document.getElementById('svgOverlay');
+  const stageRect = document.getElementById('stage').getBoundingClientRect();
+  svg.setAttribute('width', stageRect.width);
+  svg.setAttribute('height', stageRect.height);
+  let html = '';
+
+  function center(id){
+    const el = document.querySelector(`[data-id="${id}"]`); if(!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width/2 - stageRect.left, y: r.top + r.height/2 - stageRect.top };
+  }
+
+  const focusSet = getFocusSet();
+  function faded(idA, idB){
+    return !!focusSet && !(focusSet.has(idA) && focusSet.has(idB));
+  }
+
+  const drawnParentChild = new Set();
+  const drawnSpouse = new Set();
+  allNodes().forEach(n=>{
+    // parent -> child branch (curved "root" line). If either end is folded
+    // into a cluster badge, the line routes to/from the badge instead —
+    // this is what visually connects e.g. Vinitha's cluster badge down to
+    // her actual children Arnav and Tanya, who are never hidden themselves.
+    n.children.forEach(cid=>{
+      const src = effectiveAnchorId(n.id), dst = effectiveAnchorId(cid);
+      if(src === dst) return; // both folded into the same badge — nothing to draw
+      const pairKey = src + '>>' + dst;
+      if(drawnParentChild.has(pairKey)) return;
+      drawnParentChild.add(pairKey);
+      const c1 = center(src), c2 = center(dst);
+      if(c1 && c2){
+        const dim = faded(n.id, cid);
+        const midY = (c1.y + c2.y)/2;
+        html += `<path d="M ${c1.x} ${c1.y} C ${c1.x} ${midY}, ${c2.x} ${midY}, ${c2.x} ${c2.y}"
+          stroke="${dim ? '#3a4250' : '#63806a'}" stroke-width="1.6" fill="none" opacity="${dim ? 0.18 : 0.75}"/>`;
+      }
+    });
+    // spouse link (short straight line) — skipped when both partners are
+    // folded into the same badge together (no internal line needed)
+    n.spouses.forEach(sid=>{
+      const src = effectiveAnchorId(n.id), dst = effectiveAnchorId(sid);
+      if(src === dst) return;
+      const key = [src,dst].sort().join('|');
+      if(drawnSpouse.has(key)) return;
+      drawnSpouse.add(key);
+      const c1 = center(src), c2 = center(dst);
+      if(c1 && c2){
+        const dim = faded(n.id, sid);
+        html += `<line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}"
+          stroke="${dim ? '#3a4250' : '#c9a24b'}" stroke-width="1.6" stroke-dasharray="2 4" opacity="${dim ? 0.18 : 0.85}"/>`;
+      }
+    });
+  });
+  svg.innerHTML = html;
+}
+
+/* =========================================================
+   6. VIEW CONTROLS — pan / zoom
+   ========================================================= */
+const stageEl = document.getElementById('stage');
+
+stageEl.addEventListener('wheel', (e)=>{
+  e.preventDefault();
+  const delta = -e.deltaY * 0.0016;
+  view.zoom = clamp(view.zoom * (1+delta), 0.25, 2.6);
+  applyWorldTransform();
+}, { passive:false });
+
+stageEl.addEventListener('pointerdown', (e)=>{
+  pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(pointers.size === 1){
+    dragging = true; dragMoved = false;
+    lastPX = e.clientX; lastPY = e.clientY;
+    stageEl.classList.add('dragging');
+  }
+});
+window.addEventListener('pointermove', (e)=>{
+  if(!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+
+  if(pointers.size === 2){
+    const pts = Array.from(pointers.values());
+    const dist = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+    if(!pinchStartDist){ pinchStartDist = dist; pinchStartZoom = view.zoom; }
+    view.zoom = clamp(pinchStartZoom * (dist/pinchStartDist), 0.25, 2.6);
+    applyWorldTransform();
+    return;
+  }
+  if(dragging){
+    const dx = e.clientX - lastPX, dy = e.clientY - lastPY;
+    if(Math.abs(dx)+Math.abs(dy) > 3) dragMoved = true;
+    view.panX += dx; view.panY += dy;
+    lastPX = e.clientX; lastPY = e.clientY;
+    applyWorldTransform();
+  }
+});
+window.addEventListener('pointerup', (e)=>{
+  pointers.delete(e.pointerId);
+  if(pointers.size < 2) pinchStartDist = 0;
+  if(pointers.size === 0){ dragging=false; stageEl.classList.remove('dragging'); }
+});
+
+document.getElementById('zoomIn').addEventListener('click', ()=>{ view.zoom = clamp(view.zoom*1.2,0.25,2.6); applyWorldTransform(); });
+document.getElementById('zoomOut').addEventListener('click', ()=>{ view.zoom = clamp(view.zoom/1.2,0.25,2.6); applyWorldTransform(); });
+document.getElementById('resetViewBtn').addEventListener('click', ()=>{
+  view.panX=0; view.panY=0; view.zoom=0.9;
+  applyWorldTransform();
+});
+window.addEventListener('resize', ()=> requestAnimationFrame(updateConnectors));
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+/* =========================================================
+   7. INSPECTOR PANEL
+   ========================================================= */
+const inspector = document.getElementById('inspector');
+
+function openInspector(id){
+  selectedId = id;
+  inspector.classList.add('open');
+  renderAll();
+}
+document.getElementById('inspClose').addEventListener('click', ()=>{
+  inspector.classList.remove('open'); selectedId=null; renderAll();
+});
+
+function kinLine(ids, emptyText){
+  if(!ids || !ids.length) return `<span>${emptyText}</span>`;
+  return ids.map(id=>{
+    const n = node(id); if(!n) return '';
+    return `<a data-goto="${id}">${escapeHtml(n.name)}</a>`;
+  }).join(', ');
+}
+function kinLineUnlinkable(ids, emptyText, unlinkKind){
+  if(!ids || !ids.length) return `<span>${emptyText}</span>`;
+  return ids.map(id=>{
+    const n = node(id); if(!n) return '';
+    return `<span class="kinItem"><a data-goto="${id}">${escapeHtml(n.name)}</a>` +
+      `<button class="kinUnlink" data-unlink="${unlinkKind}" data-other="${id}" title="Remove this link">✕</button></span>`;
+  }).join(', ');
+}
+
+function refreshInspectorContent(){
+  const n = node(selectedId);
+  if(!n){ inspector.classList.remove('open'); return; }
+  document.getElementById('inspName').textContent = n.name;
+  document.getElementById('inspYears').textContent = yearsLabel(n) || 'no dates recorded';
+  document.getElementById('kinParents').innerHTML = kinLineUnlinkable(n.parents, 'None recorded', 'parent');
+  document.getElementById('kinSiblings').innerHTML = kinLine(siblingsOf(n), 'None recorded');
+  document.getElementById('kinSpouses').innerHTML = kinLineUnlinkable(n.spouses, 'None recorded', 'spouse');
+  document.getElementById('kinChildren').innerHTML = kinLineUnlinkable(n.children, 'None recorded', 'child');
+  document.getElementById('inspNotes').value = n.notes || '';
+  const pinBtn = document.getElementById('inspPinBtn');
+  const pinned = !!data.pinnedIds[n.id];
+  pinBtn.classList.toggle('active', pinned);
+  pinBtn.textContent = pinned ? '📌 Pinned' : '📌 Pin';
+}
+document.getElementById('inspPinBtn').addEventListener('click', ()=>{
+  if(!selectedId) return;
+  if(data.pinnedIds[selectedId]) delete data.pinnedIds[selectedId];
+  else data.pinnedIds[selectedId] = true;
+  persist();
+  renderAll();
+});
+function siblingsOf(n){
+  const set = new Set();
+  n.parents.forEach(pid=>{ const p=node(pid); if(p) p.children.forEach(cid=>{ if(cid!==n.id) set.add(cid); }); });
+  return Array.from(set);
+}
+
+document.getElementById('inspector').addEventListener('click', (e)=>{
+  const a = e.target.closest('a[data-goto]');
+  if(a){ openInspector(a.dataset.goto); return; }
+  const u = e.target.closest('button[data-unlink]');
+  if(u){
+    e.stopPropagation();
+    doUnlink(u.dataset.unlink, u.dataset.other);
+  }
+});
+function doUnlink(kind, otherId){
+  const n = node(selectedId), other = node(otherId);
+  if(!n || !other) return;
+  const labels = { parent:'parent link to', child:'child link to', spouse:'partner link to' };
+  if(!confirm(`Remove the ${labels[kind] || 'link to'} ${other.name}?`)) return;
+  pushHistory();
+  if(kind === 'parent') unlinkParentChild(otherId, n.id);      // other is n's parent
+  else if(kind === 'child') unlinkParentChild(n.id, otherId);  // n is other's parent
+  else if(kind === 'spouse') unlinkSpouses(n.id, otherId);
+  persist();
+  renderAll();
+}
+document.querySelectorAll('.relBtns [data-rel]').forEach(btn=>{
+  btn.addEventListener('click', ()=> openAddModal(btn.dataset.rel, selectedId));
+});
+document.getElementById('inspNotes').addEventListener('change', (e)=>{
+  const n = node(selectedId); if(!n) return;
+  pushHistory();
+  n.notes = e.target.value; persist();
+});
+document.getElementById('inspEditBtn').addEventListener('click', ()=> openEditModal(selectedId));
+document.getElementById('inspDeleteBtn').addEventListener('click', ()=>{
+  if(!selectedId) return;
+  if(!confirm('Delete this person? This cannot be undone.')) return;
+  pushHistory();
+  const res = deleteNode(selectedId);
+  if(!res.ok){ undoStack.pop(); updateUndoRedoButtons(); showToast(res.reason); return; }
+  selectedId = null;
+  inspector.classList.remove('open');
+  renderAll();
+});
+
+/* =========================================================
+   8. ADD / EDIT MODAL
+   ========================================================= */
+const modalOverlay = document.getElementById('modalOverlay');
+let modalMode = null; // {kind:'add', rel, refId} | {kind:'edit', id} | {kind:'addRoot'}
+let modalLinkMode = 'new'; // 'new' | 'existing'
+
+function setModalLinkMode(mode){
+  modalLinkMode = mode;
+  document.getElementById('tabNew').classList.toggle('active', mode==='new');
+  document.getElementById('tabExisting').classList.toggle('active', mode==='existing');
+  document.getElementById('newPersonFields').style.display = mode==='new' ? '' : 'none';
+  document.getElementById('existingPersonFields').style.display = mode==='existing' ? '' : 'none';
+}
+document.getElementById('tabNew').addEventListener('click', ()=> setModalLinkMode('new'));
+document.getElementById('tabExisting').addEventListener('click', ()=> setModalLinkMode('existing'));
+
+function populateExistingList(excludeId){
+  const list = document.getElementById('existingPeopleList');
+  list.innerHTML = allNodes()
+    .filter(n=> n.id !== excludeId)
+    .sort((a,b)=> a.name.localeCompare(b.name))
+    .map(n=> `<option value="${escapeHtml(n.name)} — ${escapeHtml(yearsLabel(n)||'no dates')} [${n.id}]">`)
+    .join('');
+}
+function parseExistingSelection(value){
+  const m = value.match(/\[([^\[\]]+)\]\s*$/);
+  return m ? m[1] : null;
+}
+
+function openAddModal(rel, refId){
+  if(!refId) return;
+  modalMode = { kind:'add', rel, refId };
+  const ref = node(refId);
+  const titles = { parent:'Add a parent', sibling:'Add a sibling', spouse:'Add a partner', child:'Add a child' };
+  document.getElementById('modalTitle').textContent = titles[rel];
+  document.getElementById('modalSub').textContent = `Linked to ${ref.name}`;
+  document.getElementById('modeTabs').style.display = '';
+  clearModalFields();
+  populateExistingList(refId);
+  setModalLinkMode('new');
+  modalOverlay.classList.add('show');
+}
+function openEditModal(id){
+  const n = node(id); if(!n) return;
+  modalMode = { kind:'edit', id };
+  document.getElementById('modalTitle').textContent = 'Edit details';
+  document.getElementById('modalSub').textContent = '';
+  document.getElementById('modeTabs').style.display = 'none';
+  document.getElementById('fName').value = n.name;
+  document.getElementById('fGender').value = n.gender;
+  document.getElementById('fBirth').value = n.birth;
+  document.getElementById('fDeath').value = n.death;
+  setModalLinkMode('new');
+  modalOverlay.classList.add('show');
+}
+function clearModalFields(){
+  document.getElementById('fName').value = '';
+  document.getElementById('fGender').value = 'o';
+  document.getElementById('fBirth').value = '';
+  document.getElementById('fDeath').value = '';
+  document.getElementById('fExistingSearch').value = '';
+}
+document.getElementById('modalCancel').addEventListener('click', closeModal);
+modalOverlay.addEventListener('click', (e)=>{ if(e.target===modalOverlay) closeModal(); });
+function closeModal(){ modalOverlay.classList.remove('show'); modalMode=null; }
+
+document.getElementById('modalSave').addEventListener('click', ()=>{
+  if(!modalMode) return;
+
+  if(modalMode.kind === 'add' && modalLinkMode === 'existing'){
+    const existingId = parseExistingSelection(document.getElementById('fExistingSearch').value.trim());
+    if(!existingId || !node(existingId)){ showToast('Pick a person from the list first.'); return; }
+    pushHistory();
+    const res = linkExisting(modalMode.rel, modalMode.refId, existingId);
+    if(!res.ok){ undoStack.pop(); updateUndoRedoButtons(); showToast(res.reason); return; }
+    closeModal();
+    renderAll();
+    openInspector(existingId);
+    return;
+  }
+
+  const fields = {
+    name: document.getElementById('fName').value.trim(),
+    gender: document.getElementById('fGender').value,
+    birth: document.getElementById('fBirth').value.trim(),
+    death: document.getElementById('fDeath').value.trim(),
+  };
+  if(!fields.name){ showToast('Please enter a name.'); return; }
+
+  if(modalMode.kind === 'add'){
+    pushHistory();
+    const created = addRelative(modalMode.rel, modalMode.refId, fields);
+    closeModal();
+    renderAll();
+    if(created) openInspector(created.id);
+  } else if(modalMode.kind === 'edit'){
+    pushHistory();
+    updateNodeFields(modalMode.id, fields);
+    closeModal();
+    renderAll();
+  } else if(modalMode.kind === 'addRoot'){
+    pushHistory();
+    const n = createNode(fields, 0);
+    data.rootId = n.id;
+    persist();
+    closeModal();
+    renderAll();
+    openInspector(n.id);
+  }
+});
+
+/* first person */
+document.getElementById('addMeBtn').addEventListener('click', ()=>{
+  modalMode = { kind:'addRoot' };
+  document.getElementById('modalTitle').textContent = 'Add yourself';
+  document.getElementById('modalSub').textContent = 'You can add everyone else from here.';
+  document.getElementById('modeTabs').style.display = 'none';
+  clearModalFields();
+  setModalLinkMode('new');
+  modalOverlay.classList.add('show');
+});
+
+/* =========================================================
+   9. EXPORT / IMPORT
+   ========================================================= */
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'family-tree-backup.json'; a.click();
+  URL.revokeObjectURL(url);
+});
+document.getElementById('importBtn').addEventListener('click', ()=> document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change', (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed.nodes) throw new Error('bad file');
+      if(!confirm('Import will replace the current tree everyone sees. Continue?')) return;
+      pushHistory();
+      data = ensureShape(parsed);
+      persist();
+      renderAll();
+      showToast('Tree imported.');
+    }catch(err){ showToast('That file could not be read as a family tree backup.'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+/* =========================================================
+   9b. UNDO / REDO
+   ========================================================= */
+document.getElementById('undoBtn').addEventListener('click', doUndo);
+document.getElementById('redoBtn').addEventListener('click', doRedo);
+window.addEventListener('keydown', (e)=>{
+  const tag = (e.target && e.target.tagName || '').toLowerCase();
+  if(tag === 'input' || tag === 'textarea' || tag === 'select') return;
+  if(!(e.ctrlKey || e.metaKey)) return;
+  if(e.key.toLowerCase() === 'z' && !e.shiftKey){ e.preventDefault(); doUndo(); }
+  else if(e.key.toLowerCase() === 'y' || (e.key.toLowerCase()==='z' && e.shiftKey)){ e.preventDefault(); doRedo(); }
+});
+
+/* =========================================================
+   10. SETUP MODAL (informational)
+   ========================================================= */
+document.getElementById('setupBtn').addEventListener('click', ()=>{
+  alert(
+    (SHARED_MODE ? "Shared mode is ON — everyone with this link edits the same tree.\n\n" : "Local-only mode — this tree is saved only in this browser.\n\n") +
+    "To turn on shared mode (or move it to a new Firebase project):\n" +
+    "1. Create a free project at https://console.firebase.google.com\n" +
+    "2. Enable Firestore Database (test mode is fine to start)\n" +
+    "3. Copy your web app's firebaseConfig values into the FIREBASE_CONFIG object near the top of this file's <script>\n" +
+    "4. In Firestore Rules, allow open read/write on familyTree/data (see comment at top of file for exact rule text)\n" +
+    "5. Re-upload the file to your host.\n\n" +
+    "Use Export JSON regularly as a backup, since editing is fully open to anyone with the link."
+  );
+});
+
+/* =========================================================
+   11. TOAST
+   ========================================================= */
+let toastTimer = null;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), 2600);
+}
+
+/* =========================================================
+   12. BOOT
+   ========================================================= */
+initStorage();
+applyWorldTransform();
+renderAll();
+
+})();
+</script>
+</body>
+</html>
