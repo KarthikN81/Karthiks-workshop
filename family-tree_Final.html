@@ -182,12 +182,6 @@
   #zoomCtrl{display:flex; gap:2px;}
   #zoomCtrl .toolbtn{padding:8px 11px;}
 
-  #modeBanner{position:absolute; top:60px; left:18px; z-index:20; max-width:340px;
-    background:rgba(23,28,39,.92); border:1px solid var(--panel-border); border-left:3px solid var(--gold);
-    padding:10px 13px; border-radius:6px; font-size:11.5px; color:var(--text-dim); display:none;}
-  #modeBanner.show{display:block;}
-  #modeBanner b{color:var(--gold-bright);}
-
   #emptyState{position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:15;}
   #emptyState.show{display:flex;}
   #emptyState .box{text-align:center; max-width:380px;}
@@ -296,8 +290,6 @@
   <input type="file" id="importFile" accept="application/json" style="display:none;">
   <button class="toolbtn" id="setupBtn">Setup / sharing</button>
 </div>
-
-<div id="modeBanner"></div>
 
 <!-- Inspector -->
 <div id="inspector">
@@ -487,16 +479,13 @@ function initStorage(){
         console.error("Firestore listen error", err);
         showToast("Couldn't reach the shared database — check Setup.");
       });
-      showBanner(false);
     }catch(e){
       console.error(e);
       showToast("Shared mode failed to start — falling back to local-only.");
       data = loadLocal();
-      showBanner(true);
     }
   } else {
     data = loadLocal();
-    showBanner(true);
   }
 }
 
@@ -511,16 +500,6 @@ function persist(){
     }, 250);
   } else {
     saveLocal(data);
-  }
-}
-
-function showBanner(show){
-  const el = document.getElementById('modeBanner');
-  if(show){
-    el.innerHTML = "<b>Local-only mode.</b> This tree is only saved in your browser. Click <b>Setup / sharing</b> above to make it live for everyone with the link.";
-    el.classList.add('show');
-  } else {
-    el.classList.remove('show');
   }
 }
 
