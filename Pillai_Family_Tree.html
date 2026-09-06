@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>The Family Tree — View Only</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!--
+  =====================================================================
+  ABOUT THIS FILE — a read-only viewer
+  =====================================================================
+  This is a companion to the main (editable) Family Tree app. Anyone who
+  opens THIS file can pan, zoom, click through people, and expand/collapse
+  big families — but there is no way to add, edit, delete, or link anyone.
+  It's for sharing your tree with family so they can look, not touch.
+
+  HOW TO SHARE YOUR TREE:
+    1. In your editable Family Tree app, click "Export JSON" to download
+       your data.
+    2. Then choose ONE of:
+
+       a) Zero-click, works anywhere (recommended):
+          Paste your exported JSON into EMBEDDED_DATA near the top of the
+          script section below (or just send Claude the .json and ask it
+          to bake it in). The data travels inside this one file — host
+          it, email it, or share it as a link; anyone who opens it sees
+          the tree immediately, with nothing to click first.
+
+       b) Co-hosted data file:
+          Rename the exported file to exactly "family-tree-data.json"
+          and upload it into the SAME folder as this viewer file on your
+          static host (GitHub Pages, Netlify, etc). This viewer looks for
+          that file automatically if EMBEDDED_DATA is left empty.
+
+       c) Manual load, no hosting needed:
+          Send people this viewer file together with your exported .json
+          (e.g. two email attachments). They open the viewer and use the
+          "Load file" button to pick the .json file you sent them.
+
+  Either way, nothing anyone does in the viewer is ever saved back
+  anywhere — it only exists in that visitor's browser tab.
+  =====================================================================
+-->
+
+<style>
+  :root{
+    --bg-deep:#0d1017;
+    --bg-deep-2:#080a0f;
+    --panel:#171c27;
+    --panel-border:rgba(201,162,75,.22);
+    --parchment:#f3e8cf;
+    --parchment-dim:#e6d7b3;
+    --ink:#2c2317;
+    --ink-soft:#6b5b45;
+    --gold:#c9a24b;
+    --gold-bright:#e8c876;
+    --sage:#63806a;
+    --rose:#b5495b;
+    --teal:#3f7f80;
+    --text:#eef0f4;
+    --text-dim:#8d95a8;
+    --danger:#c1584f;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg-deep);color:var(--text);
+    font-family:'Inter',sans-serif; overflow:hidden;}
+  .display{font-family:'Fraunces',serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  #stage{
+    position:fixed; inset:0; overflow:hidden;
+    background:
+      radial-gradient(ellipse 1200px 800px at 50% 20%, #1a2130 0%, var(--bg-deep) 55%, var(--bg-deep-2) 100%);
+    cursor:grab;
+  }
+  #stage.dragging{cursor:grabbing;}
+  #stage::before{
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:.5;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.25) 0, transparent 100%),
+      radial-gradient(1px 1px at 70% 65%, rgba(255,255,255,.18) 0, transparent 100%),
+      radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,.2) 0, transparent 100%),
+      radial-gradient(1px 1px at 85% 15%, rgba(255,255,255,.2) 0, transparent 100%),
+      radial-gradient(1px 1px at 55% 45%, rgba(255,255,255,.15) 0, transparent 100%);
+    background-size:100% 100%;
+  }
+
+  #svgOverlay{position:absolute; inset:0; width:100%; height:100%; pointer-events:none;}
+
+  #world{position:absolute; left:50%; top:50%;}
+  #nodesLayer{position:absolute; left:0; top:0;}
+
+  .node{
+    position:absolute; width:172px; margin-left:-86px; margin-top:-54px;
+    background:linear-gradient(180deg,var(--parchment),var(--parchment-dim));
+    border:1px solid var(--gold);
+    border-radius:7px;
+    box-shadow:0 10px 24px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.05) inset;
+    color:var(--ink);
+    padding:10px 12px 9px;
+    cursor:pointer;
+    user-select:none;
+    transition:box-shadow .15s, transform .1s;
+  }
+  .node:hover{box-shadow:0 12px 30px rgba(0,0,0,.55), 0 0 0 2px var(--gold-bright);}
+  .node.selected{box-shadow:0 12px 30px rgba(0,0,0,.55), 0 0 0 2px var(--rose);}
+  .node.you{box-shadow:0 12px 30px rgba(0,0,0,.55), 0 0 0 2px var(--teal);}
+  .node.kin-highlight{box-shadow:0 12px 30px rgba(0,0,0,.55), 0 0 0 2px var(--gold-bright);}
+  .node.dimmed{opacity:.28; filter:grayscale(.55); box-shadow:0 6px 14px rgba(0,0,0,.35);}
+  .node.dimmed:hover{opacity:.55;}
+  .node .row{display:flex; align-items:center; gap:8px;}
+  .node .info{flex:1; min-width:0;}
+  .avatar{
+    width:28px; height:28px; border-radius:50%; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700; color:#fff; font-family:'Inter',sans-serif;
+  }
+  .avatar.g-m{background:var(--teal);}
+  .avatar.g-f{background:var(--rose);}
+  .avatar.g-o{background:var(--gold);}
+  .node .name{font-family:'Fraunces',serif; font-weight:600; font-size:14.5px; line-height:1.22;
+    overflow:hidden; text-overflow:ellipsis; word-break:break-word;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
+  .node .name.long-name{font-size:12.5px; line-height:1.18;}
+  .node .years{font-size:10.5px; color:var(--ink-soft); letter-spacing:.03em; margin-top:2px;}
+  .node .tag{position:absolute; top:-9px; right:8px; background:var(--sage); color:#fff;
+    font-size:9px; letter-spacing:.06em; padding:2px 6px; border-radius:9px; text-transform:uppercase;}
+  .node .pin-tag{position:absolute; top:-9px; left:8px; background:var(--gold); color:#1b1305;
+    font-size:9px; letter-spacing:.06em; padding:2px 6px; border-radius:9px;}
+
+  .child-collapse-btn{
+    position:absolute; left:50%; bottom:-13px; width:26px; height:26px; margin-left:-13px;
+    border-radius:50%; background:var(--panel); border:1px solid var(--gold); color:var(--gold-bright);
+    font-size:13px; line-height:1; padding:0; font-family:inherit;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,.4); z-index:6;
+    transition:background .15s, transform .1s;
+  }
+  .child-collapse-btn:hover{ background:#232b3b; transform:scale(1.08); }
+
+  .collapse-indicator{
+    position:absolute; left:0; top:0;
+    background:var(--gold); color:#1b1305; font-weight:700; font-size:12.5px;
+    padding:5px 11px; border-radius:14px; white-space:nowrap; cursor:pointer;
+    box-shadow:0 6px 14px rgba(0,0,0,.4); border:1px solid var(--gold-bright);
+    transition:background .15s, transform .1s; z-index:4;
+  }
+  .collapse-indicator:hover{ background:var(--gold-bright); }
+  .collapse-indicator.dimmed{ opacity:.28; filter:grayscale(.5); }
+  .collapse-indicator.kin-highlight{ box-shadow:0 6px 14px rgba(0,0,0,.4), 0 0 0 2px var(--rose); }
+
+  /* Toolbar */
+  #toolbar{position:absolute; top:0; left:0; right:0; z-index:20;
+    display:flex; align-items:center; gap:10px; padding:14px 18px;
+    background:linear-gradient(180deg, rgba(8,10,15,.85), rgba(8,10,15,0));
+    pointer-events:none;}
+  #toolbar > *{pointer-events:auto;}
+  #brand{display:flex; align-items:baseline; gap:8px; margin-right:8px;}
+  #brand .title{font-family:'Fraunces',serif; font-weight:700; font-size:19px; letter-spacing:.01em;}
+  #brand .sub{font-size:10.5px; color:var(--text-dim); letter-spacing:.05em;}
+  #brand .badge{background:var(--panel); border:1px solid var(--panel-border); color:var(--gold-bright);
+    font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; padding:3px 7px; border-radius:8px;}
+  .toolbtn{
+    background:var(--panel); border:1px solid var(--panel-border); color:var(--text);
+    padding:8px 12px; border-radius:6px; font-size:12.5px; cursor:pointer; letter-spacing:.02em;
+    display:flex; align-items:center; gap:6px; white-space:nowrap;
+    transition:border-color .15s, background .15s;
+  }
+  .toolbtn:hover{border-color:var(--gold); background:#1d2432;}
+  #spacer{flex:1;}
+  #zoomCtrl{display:flex; gap:2px;}
+  #zoomCtrl .toolbtn{padding:8px 11px;}
+
+  #loadState{position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:25;
+    background:rgba(8,10,15,.55);}
+  #loadState.show{display:flex;}
+  #loadState .box{text-align:center; max-width:420px; padding:0 20px;}
+  #loadState h1{font-family:'Fraunces',serif; font-size:28px; margin:0 0 8px;}
+  #loadState p{color:var(--text-dim); font-size:13.5px; margin:0 0 18px; line-height:1.55;}
+  #dropZone{
+    border:2px dashed var(--panel-border); border-radius:10px; padding:28px 20px;
+    background:var(--panel); cursor:pointer; transition:border-color .15s, background .15s;
+  }
+  #dropZone:hover, #dropZone.hover{border-color:var(--gold); background:#1d2432;}
+  #dropZone .icon{font-size:26px; margin-bottom:6px;}
+  #dropZone .hint{font-size:11.5px; color:var(--text-dim); margin-top:6px;}
+
+  /* Inspector panel */
+  #inspector{
+    position:fixed; top:0; right:0; height:100%; width:340px; max-width:92vw;
+    background:var(--panel); border-left:1px solid var(--panel-border);
+    transform:translateX(100%); transition:transform .25s ease; z-index:30;
+    display:flex; flex-direction:column; box-shadow:-20px 0 40px rgba(0,0,0,.4);
+  }
+  #inspector.open{transform:translateX(0);}
+  #inspector .head{padding:18px 18px 14px; border-bottom:1px solid var(--panel-border);
+    display:flex; justify-content:space-between; align-items:flex-start;}
+  #inspector .head h2{font-family:'Fraunces',serif; margin:0; font-size:20px;}
+  #inspector .headYears{color:var(--text-dim); font-size:12px; margin-top:3px;}
+  #inspector .closeBtn{background:none; border:none; color:var(--text-dim); font-size:18px; cursor:pointer; line-height:1;}
+  #inspector .body{padding:16px 18px; overflow-y:auto; flex:1;}
+  #inspector .section-label{font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--gold);
+    margin:18px 0 8px;}
+  #inspector .section-label:first-child{margin-top:0;}
+  .kinList{font-size:12.5px; color:var(--text-dim); line-height:1.7;}
+  .kinList a{color:var(--text); text-decoration:none; border-bottom:1px dotted var(--text-dim); cursor:pointer;}
+  .kinList a:hover{color:var(--gold-bright); border-color:var(--gold-bright);}
+  #inspNotes{font-size:13px; color:var(--text); line-height:1.5; white-space:pre-wrap;
+    background:#0e121b; border:1px solid var(--panel-border); border-radius:5px; padding:10px 11px; min-height:20px;}
+  #inspNotes:empty::before{content:'No notes recorded.'; color:var(--text-dim);}
+  .pinnedNote{font-size:11px; color:var(--gold-bright); margin-top:4px;}
+
+  #toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--panel); border:1px solid var(--gold); color:var(--text); padding:10px 16px;
+    border-radius:6px; font-size:12.5px; z-index:50; opacity:0; pointer-events:none; transition:opacity .2s, transform .2s;}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--panel-border); border-radius:4px;}
+
+  @media (max-width:640px){
+    #toolbar{flex-wrap:wrap;}
+    #brand{width:100%;}
+  }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <svg id="svgOverlay"></svg>
+  <div id="world">
+    <div id="nodesLayer"></div>
+  </div>
+</div>
+
+<div id="loadState">
+  <div class="box">
+    <h1 class="display">View a family tree</h1>
+    <p>Load the .json file someone exported from their Family Tree app. This viewer never edits or saves it anywhere — it only shows what's in the file.</p>
+    <div id="dropZone">
+      <div class="icon">📄</div>
+      <div>Drop a .json file here, or click to choose one</div>
+      <div class="hint">Looking for family-tree-data.json alongside this page first…</div>
+    </div>
+    <input type="file" id="fileInput" accept="application/json" style="display:none;">
+  </div>
+</div>
+
+<div id="toolbar">
+  <div id="brand">
+    <span class="title display">The Family Tree</span>
+    <span class="badge">view only</span>
+    <span class="sub">tap a card for details</span>
+  </div>
+  <div id="spacer"></div>
+  <div id="zoomCtrl">
+    <button class="toolbtn" id="zoomOut">–</button>
+    <button class="toolbtn" id="zoomIn">+</button>
+  </div>
+  <button class="toolbtn" id="resetViewBtn">Reset view</button>
+  <button class="toolbtn" id="loadFileBtn">Load file</button>
+  <button class="toolbtn" id="downloadBtn">Download JSON</button>
+</div>
+
+<!-- Inspector (read-only) -->
+<div id="inspector">
+  <div class="head">
+    <div>
+      <h2 class="display" id="inspName">—</h2>
+      <div class="headYears" id="inspYears">—</div>
+      <div class="pinnedNote" id="inspPinnedNote" style="display:none;">📌 pinned by the tree's owner</div>
+    </div>
+    <button class="closeBtn" id="inspClose">✕</button>
+  </div>
+  <div class="body">
+    <div class="section-label">Parents</div>
+    <div class="kinList" id="kinParents">—</div>
+
+    <div class="section-label">Siblings</div>
+    <div class="kinList" id="kinSiblings">—</div>
+
+    <div class="section-label">Partner(s)</div>
+    <div class="kinList" id="kinSpouses">—</div>
+
+    <div class="section-label">Children</div>
+    <div class="kinList" id="kinChildren">—</div>
+
+    <div class="section-label">Notes</div>
+    <div id="inspNotes"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================
+   0. EMBEDDED DATA — the zero-click option
+   =========================================================
+   Paste your exported family tree JSON below, replacing `null`, and this
+   viewer will show it the instant anyone opens the file or link — no
+   fetch, no file picker, nothing for a visitor to do.
+
+   EMBEDDED_DATA = {"nodes": {...}, "collapsedGroups": {...}, ...};
+
+   If you'd rather not edit this file by hand, just send Claude your
+   exported .json and ask it to bake it in here for you.
+   ========================================================= */
+const EMBEDDED_DATA = {"nodes":{"p_iq5bnw2y":{"id":"p_iq5bnw2y","name":"Karthik N","gender":"m","birth":"","death":"","notes":"","generation":0,"parents":["p_5cylxyzl","p_r1pe0q3h"],"spouses":["p_fmci28rm"],"children":["p_kpzu5sfk","p_gajbiveo"],"x":-295,"y":0,"z":0},"p_fmci28rm":{"id":"p_fmci28rm","name":"Reshma","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_82v0kd2u","p_csr55thf"],"spouses":["p_iq5bnw2y"],"children":["p_kpzu5sfk","p_gajbiveo"],"x":-105,"y":0,"z":0},"p_kpzu5sfk":{"id":"p_kpzu5sfk","name":"Sidharth","gender":"m","birth":"","death":"","notes":"","generation":1,"parents":["p_fmci28rm","p_iq5bnw2y"],"spouses":[],"children":[],"y":0},"p_gajbiveo":{"id":"p_gajbiveo","name":"Samarth","gender":"m","birth":"","death":"","notes":"","generation":1,"parents":["p_fmci28rm","p_iq5bnw2y"],"spouses":[],"children":[],"y":0},"p_82v0kd2u":{"id":"p_82v0kd2u","name":"Radha","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":[],"spouses":["p_csr55thf"],"children":["p_fmci28rm","p_5rrn9s1o","p_07axdo6m","p_0lj8jofv"],"x":-495,"y":0,"z":-260},"p_csr55thf":{"id":"p_csr55thf","name":"Raman","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":[],"spouses":["p_82v0kd2u"],"children":["p_0lj8jofv","p_07axdo6m","p_5rrn9s1o","p_fmci28rm"],"x":-305,"y":0,"z":-260},"p_5rrn9s1o":{"id":"p_5rrn9s1o","name":"Rathi","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_82v0kd2u","p_csr55thf"],"spouses":[],"children":["p_7b9h6ca7","p_v8pg6hig"],"y":0},"p_07axdo6m":{"id":"p_07axdo6m","name":"Rama","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_82v0kd2u","p_csr55thf"],"spouses":["p_k5v89wsy"],"children":["p_w6ev7sg3","p_7d1w6bfx"],"y":0},"p_0lj8jofv":{"id":"p_0lj8jofv","name":"Rekha","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_82v0kd2u","p_csr55thf"],"spouses":["p_b00qmbj9"],"children":["p_s242wlzb"],"y":0},"p_5cylxyzl":{"id":"p_5cylxyzl","name":"Nandakumar","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_iyvcbc07","p_lx9xwvq7"],"spouses":["p_r1pe0q3h"],"children":["p_iq5bnw2y","p_eeshnntq"],"x":-95,"y":0,"z":-260},"p_r1pe0q3h":{"id":"p_r1pe0q3h","name":"Suriyakala","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_mbivsey3","p_5w58rvr9"],"spouses":["p_5cylxyzl"],"children":["p_iq5bnw2y","p_eeshnntq"],"x":95,"y":0,"z":-260},"p_eeshnntq":{"id":"p_eeshnntq","name":"Vinitha","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_5cylxyzl","p_r1pe0q3h"],"spouses":["p_xclzrtl1"],"children":["p_weuks0gx","p_z0ghmjcg"],"x":105,"y":0,"z":0},"p_xclzrtl1":{"id":"p_xclzrtl1","name":"Sayooj","gender":"m","birth":"","death":"","notes":"","generation":0,"parents":["p_17er7q5y","p_i684i58w"],"spouses":["p_eeshnntq"],"children":["p_weuks0gx","p_z0ghmjcg"],"x":295,"y":0,"z":0},"p_weuks0gx":{"id":"p_weuks0gx","name":"Tanya","gender":"f","birth":"","death":"","notes":"","generation":1,"parents":["p_eeshnntq","p_xclzrtl1"],"spouses":[],"children":[],"y":0},"p_z0ghmjcg":{"id":"p_z0ghmjcg","name":"Arnav","gender":"m","birth":"","death":"","notes":"","generation":1,"parents":["p_eeshnntq","p_xclzrtl1"],"spouses":[],"children":[],"y":0},"p_7b9h6ca7":{"id":"p_7b9h6ca7","name":"Rahul","gender":"m","birth":"","death":"","notes":"","generation":1,"parents":["p_5rrn9s1o"],"spouses":[],"children":[],"y":0},"p_v8pg6hig":{"id":"p_v8pg6hig","name":"Hima","gender":"f","birth":"","death":"","notes":"","generation":1,"parents":["p_5rrn9s1o"],"spouses":[],"children":[],"y":0},"p_w6ev7sg3":{"id":"p_w6ev7sg3","name":"Aditya","gender":"m","birth":"","death":"","notes":"","generation":1,"parents":["p_07axdo6m","p_k5v89wsy"],"spouses":[],"children":[],"y":0},"p_7d1w6bfx":{"id":"p_7d1w6bfx","name":"Gowri","gender":"f","birth":"","death":"","notes":"","generation":1,"parents":["p_07axdo6m","p_k5v89wsy"],"spouses":[],"children":[],"y":0},"p_s242wlzb":{"id":"p_s242wlzb","name":"Veeksha","gender":"f","birth":"","death":"","notes":"","generation":1,"parents":["p_0lj8jofv","p_b00qmbj9"],"spouses":[],"children":[],"y":0},"p_b00qmbj9":{"id":"p_b00qmbj9","name":"Satish","gender":"m","birth":"","death":"","notes":"","generation":0,"parents":[],"spouses":["p_0lj8jofv"],"children":["p_s242wlzb"],"y":0},"p_k5v89wsy":{"id":"p_k5v89wsy","name":"Anil","gender":"m","birth":"","death":"","notes":"","generation":0,"parents":[],"spouses":["p_07axdo6m"],"children":["p_w6ev7sg3","p_7d1w6bfx"],"y":0},"p_iyvcbc07":{"id":"p_iyvcbc07","name":"Palani","gender":"m","birth":"","death":"","notes":"","generation":-2,"parents":["p_dubw63xx","p_m8tp3jok"],"spouses":["p_lx9xwvq7"],"children":["p_5cylxyzl","p_9ham2b57"],"x":-295,"y":0,"z":-520},"p_lx9xwvq7":{"id":"p_lx9xwvq7","name":"Saroja","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":["p_o2iunfg5","p_wvxsa3ig"],"spouses":["p_iyvcbc07"],"children":["p_5cylxyzl","p_9ham2b57"],"x":-105,"y":0,"z":-520},"p_dubw63xx":{"id":"p_dubw63xx","name":"Balakrishna Pillay","gender":"m","birth":"8-2-1888","death":"1975","notes":"","generation":-3,"parents":["p_518a61h5"],"spouses":["p_m8tp3jok","p_5piao1gp"],"children":["p_iyvcbc07","p_y25rpxdr","p_vsld2d9n","p_6fz54dbz","p_8geb57o1","p_zfji0pfs","p_ra17zrz9","p_nhy85sf7","p_17x892kr","p_g6rb87r7","p_68ui37r7","p_ow0xge4s"],"x":-590,"y":0,"z":-780},"p_y25rpxdr":{"id":"p_y25rpxdr","name":"Paramasivam","gender":"m","birth":"","death":"","notes":"","generation":-2,"parents":["p_dubw63xx","p_m8tp3jok"],"spouses":["p_s7bfpsns"],"children":["p_okf0hu5v","p_8rrnlxhs","p_8eobg1zt","p_ji0w5drg"],"y":0},"p_ndu65gkc":{"id":"p_ndu65gkc","name":"K S Mani","gender":"m","birth":"","death":"","notes":"","generation":-2,"parents":["p_o2iunfg5","p_wvxsa3ig"],"spouses":["p_9m932m4f"],"children":["p_fkzzbjt6","p_e85h8i6c","p_emx0thvi"],"y":0},"p_o2iunfg5":{"id":"p_o2iunfg5","name":"Kanaka Sabapathi","gender":"m","birth":"","death":"","notes":"","generation":-3,"parents":["p_zlivkydl"],"spouses":["p_wvxsa3ig"],"children":["p_lx9xwvq7","p_ndu65gkc","p_6rcltoy5","p_j30h8vio"],"x":0,"y":0,"z":-780},"p_9m932m4f":{"id":"p_9m932m4f","name":"Indira","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":[],"spouses":["p_ndu65gkc"],"children":["p_fkzzbjt6","p_e85h8i6c","p_emx0thvi"],"y":0},"p_fkzzbjt6":{"id":"p_fkzzbjt6","name":"Manju","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_ndu65gkc","p_9m932m4f"],"spouses":["p_jvdubjyq"],"children":["p_tine9lqb","p_vy779lg8"],"y":0},"p_e85h8i6c":{"id":"p_e85h8i6c","name":"Gopi","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_ndu65gkc","p_9m932m4f"],"spouses":[],"children":["p_mmcrsj74"],"y":0},"p_emx0thvi":{"id":"p_emx0thvi","name":"Nandhini (Chinni)","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_ndu65gkc","p_9m932m4f"],"spouses":["p_2dcjtjw4"],"children":["p_e68an1zj","p_tfn06673"],"y":0},"p_e68an1zj":{"id":"p_e68an1zj","name":"Prerana","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_emx0thvi","p_2dcjtjw4"],"spouses":[],"children":[],"y":0},"p_tfn06673":{"id":"p_tfn06673","name":"Suparna","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_emx0thvi","p_2dcjtjw4"],"spouses":[],"children":[],"y":0},"p_2dcjtjw4":{"id":"p_2dcjtjw4","name":"Swaroop","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":[],"spouses":["p_emx0thvi"],"children":["p_e68an1zj","p_tfn06673"],"y":0},"p_jvdubjyq":{"id":"p_jvdubjyq","name":"Ravi","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":[],"spouses":["p_fkzzbjt6"],"children":["p_tine9lqb","p_vy779lg8"],"y":0},"p_tine9lqb":{"id":"p_tine9lqb","name":"Sunil","gender":"m","birth":"","death":"","notes":"","generation":0,"parents":["p_fkzzbjt6","p_jvdubjyq"],"spouses":[],"children":[],"y":0},"p_vy779lg8":{"id":"p_vy779lg8","name":"Vaishnavi (kuki)","gender":"o","birth":"","death":"","notes":"","generation":0,"parents":["p_fkzzbjt6","p_jvdubjyq"],"spouses":[],"children":[],"y":0},"p_9ham2b57":{"id":"p_9ham2b57","name":"Vijaya","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_iyvcbc07","p_lx9xwvq7"],"spouses":["p_xt0mhlw6"],"children":["p_vkzd7844","p_hh9il0b5"],"y":0},"p_xt0mhlw6":{"id":"p_xt0mhlw6","name":"Manickam","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_kehieg6k","p_vsld2d9n"],"spouses":["p_9ham2b57"],"children":["p_vkzd7844","p_hh9il0b5"],"y":0},"p_vkzd7844":{"id":"p_vkzd7844","name":"Bhuvana","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_9ham2b57","p_xt0mhlw6"],"spouses":["p_fkmn7lvx"],"children":["p_b58jsvkp","p_glhe0hjk"],"y":0},"p_hh9il0b5":{"id":"p_hh9il0b5","name":"Kavitha","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_9ham2b57","p_xt0mhlw6"],"spouses":["p_3zcsecri"],"children":["p_nojrv6c5"],"y":0},"p_fkmn7lvx":{"id":"p_fkmn7lvx","name":"Murugan","gender":"m","birth":"","death":"","notes":"","generation":0,"parents":[],"spouses":["p_vkzd7844"],"children":["p_b58jsvkp","p_glhe0hjk"],"y":0},"p_3zcsecri":{"id":"p_3zcsecri","name":"Anand","gender":"m","birth":"","death":"","notes":"","generation":0,"parents":[],"spouses":["p_hh9il0b5"],"children":["p_nojrv6c5"],"y":0},"p_b58jsvkp":{"id":"p_b58jsvkp","name":"Ajay","gender":"m","birth":"","death":"","notes":"","generation":1,"parents":["p_vkzd7844","p_fkmn7lvx"],"spouses":[],"children":[],"y":0},"p_glhe0hjk":{"id":"p_glhe0hjk","name":"Ananya","gender":"f","birth":"","death":"","notes":"","generation":1,"parents":["p_vkzd7844","p_fkmn7lvx"],"spouses":[],"children":[],"y":0},"p_nojrv6c5":{"id":"p_nojrv6c5","name":"Kritik","gender":"m","birth":"","death":"","notes":"","generation":1,"parents":["p_hh9il0b5","p_3zcsecri"],"spouses":[],"children":[],"y":0},"p_mbivsey3":{"id":"p_mbivsey3","name":"Parathasarathy","gender":"m","birth":"","death":"","notes":"","generation":-2,"parents":[],"spouses":["p_5w58rvr9"],"children":["p_r1pe0q3h"],"x":105,"y":0,"z":-520},"p_5w58rvr9":{"id":"p_5w58rvr9","name":"Lakshmi Bai","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":[],"spouses":["p_mbivsey3"],"children":["p_r1pe0q3h"],"x":295,"y":0,"z":-520},"p_r5z69vw3":{"id":"p_r5z69vw3","name":"Sapna","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_17er7q5y","p_i684i58w"],"spouses":["p_pt9pfqg0"],"children":["p_rui4jcfi","p_jec7zgp2"],"y":0},"p_pt9pfqg0":{"id":"p_pt9pfqg0","name":"Shyam","gender":"m","birth":"","death":"","notes":"","generation":0,"parents":[],"spouses":["p_r5z69vw3"],"children":["p_rui4jcfi","p_jec7zgp2"],"y":0},"p_rui4jcfi":{"id":"p_rui4jcfi","name":"Avani","gender":"f","birth":"","death":"","notes":"","generation":1,"parents":["p_pt9pfqg0","p_r5z69vw3"],"spouses":[],"children":[],"y":0},"p_jec7zgp2":{"id":"p_jec7zgp2","name":"Avish","gender":"m","birth":"","death":"","notes":"","generation":1,"parents":["p_pt9pfqg0","p_r5z69vw3"],"spouses":[],"children":[],"y":0},"p_17er7q5y":{"id":"p_17er7q5y","name":"Sreedharan","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":[],"spouses":["p_i684i58w"],"children":["p_xclzrtl1","p_r5z69vw3"],"x":305,"y":0,"z":-260},"p_i684i58w":{"id":"p_i684i58w","name":"Indulekha","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":[],"spouses":["p_17er7q5y"],"children":["p_r5z69vw3","p_xclzrtl1"],"x":495,"y":0,"z":-260},"p_mmcrsj74":{"id":"p_mmcrsj74","name":"Vibha","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_e85h8i6c"],"spouses":[],"children":[],"y":0},"p_m8tp3jok":{"id":"p_m8tp3jok","name":"Rajamal","gender":"f","birth":"","death":"","notes":"","generation":-3,"parents":[],"spouses":["p_dubw63xx"],"children":["p_iyvcbc07","p_y25rpxdr","p_vsld2d9n","p_8geb57o1","p_zfji0pfs","p_ra17zrz9","p_nhy85sf7","p_17x892kr","p_g6rb87r7","p_68ui37r7","p_ow0xge4s"],"x":-400,"y":0,"z":-780},"p_s7bfpsns":{"id":"p_s7bfpsns","name":"Rajalakshmi","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":[],"spouses":["p_y25rpxdr"],"children":["p_okf0hu5v","p_8rrnlxhs","p_8eobg1zt","p_ji0w5drg"],"y":0},"p_okf0hu5v":{"id":"p_okf0hu5v","name":"Loganathan","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_y25rpxdr","p_s7bfpsns"],"spouses":["p_tqmnzf0n"],"children":["p_pa8mh5we","p_72yzxfp8"],"y":0},"p_tqmnzf0n":{"id":"p_tqmnzf0n","name":"Anusiya","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":[],"spouses":["p_okf0hu5v"],"children":["p_pa8mh5we","p_72yzxfp8"],"y":0},"p_pa8mh5we":{"id":"p_pa8mh5we","name":"Kamal","gender":"m","birth":"","death":"","notes":"","generation":0,"parents":["p_tqmnzf0n","p_okf0hu5v"],"spouses":[],"children":[],"y":0},"p_72yzxfp8":{"id":"p_72yzxfp8","name":"Yamini","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_tqmnzf0n","p_okf0hu5v"],"spouses":[],"children":[],"y":0},"p_8rrnlxhs":{"id":"p_8rrnlxhs","name":"Chandrasekar (Chelli)","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_y25rpxdr","p_s7bfpsns"],"spouses":["p_y9yf373j"],"children":["p_dwk5a2qd","p_b2u42aof","p_wr1kv9ff"],"y":0},"p_y9yf373j":{"id":"p_y9yf373j","name":"Tulasi","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":[],"spouses":["p_8rrnlxhs"],"children":["p_dwk5a2qd","p_b2u42aof","p_wr1kv9ff"],"y":0},"p_dwk5a2qd":{"id":"p_dwk5a2qd","name":"Raghavan","gender":"m","birth":"","death":"","notes":"","generation":0,"parents":["p_8rrnlxhs","p_y9yf373j"],"spouses":[],"children":[],"y":0},"p_b2u42aof":{"id":"p_b2u42aof","name":"Revathi","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_8rrnlxhs","p_y9yf373j"],"spouses":[],"children":[],"y":0},"p_wr1kv9ff":{"id":"p_wr1kv9ff","name":"Sriram","gender":"m","birth":"","death":"","notes":"","generation":0,"parents":["p_8rrnlxhs","p_y9yf373j"],"spouses":[],"children":[],"y":0},"p_8eobg1zt":{"id":"p_8eobg1zt","name":"Rajan","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_y25rpxdr","p_s7bfpsns"],"spouses":["p_80p8gumy"],"children":["p_1egmjjlk","p_hkkumrji"],"y":0},"p_80p8gumy":{"id":"p_80p8gumy","name":"Gowri","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":[],"spouses":["p_8eobg1zt"],"children":["p_1egmjjlk","p_hkkumrji"],"y":0},"p_1egmjjlk":{"id":"p_1egmjjlk","name":"Aishwarya","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_8eobg1zt","p_80p8gumy"],"spouses":[],"children":[],"y":0},"p_hkkumrji":{"id":"p_hkkumrji","name":"Sukanya","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_8eobg1zt","p_80p8gumy"],"spouses":[],"children":[],"y":0},"p_ji0w5drg":{"id":"p_ji0w5drg","name":"ThiruMurthy","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_y25rpxdr","p_s7bfpsns"],"spouses":["p_65fmr7ns"],"children":["p_g7d7m708","p_x9qqgrr7"],"y":0},"p_65fmr7ns":{"id":"p_65fmr7ns","name":"Lalitha","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_fd495v5o","p_68ui37r7"],"spouses":["p_ji0w5drg"],"children":["p_g7d7m708","p_x9qqgrr7"],"y":0},"p_g7d7m708":{"id":"p_g7d7m708","name":"Sagar","gender":"m","birth":"","death":"","notes":"","generation":0,"parents":["p_ji0w5drg","p_65fmr7ns"],"spouses":[],"children":[],"y":0},"p_x9qqgrr7":{"id":"p_x9qqgrr7","name":"Saranya","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_ji0w5drg","p_65fmr7ns"],"spouses":[],"children":[],"y":0},"p_518a61h5":{"id":"p_518a61h5","name":"Palaniyandi Pillai","gender":"m","birth":"","death":"","notes":"","generation":-4,"parents":[],"spouses":[],"children":["p_dubw63xx"],"x":-105,"y":0,"z":-1040},"p_6rcltoy5":{"id":"p_6rcltoy5","name":"Prema","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":["p_o2iunfg5","p_wvxsa3ig"],"spouses":["p_ejwbykis"],"children":[],"y":0},"p_j30h8vio":{"id":"p_j30h8vio","name":"Rajeshwari","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":["p_o2iunfg5","p_wvxsa3ig"],"spouses":["p_ejwbykis"],"children":[],"y":0},"p_ejwbykis":{"id":"p_ejwbykis","name":"Nelakantan (naina thata)","gender":"m","birth":"","death":"","notes":"","generation":-2,"parents":[],"spouses":["p_j30h8vio","p_6rcltoy5"],"children":["p_po8m8oz3","p_0kafab4s","p_yslmanib"],"y":0},"p_po8m8oz3":{"id":"p_po8m8oz3","name":"Shivakumar","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_ejwbykis"],"spouses":["p_zy6lrmyj"],"children":["p_zwmxomos","p_os82ghhh"],"y":0},"p_zy6lrmyj":{"id":"p_zy6lrmyj","name":"Vasantha","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":[],"spouses":["p_po8m8oz3"],"children":["p_zwmxomos","p_os82ghhh"],"y":0},"p_0kafab4s":{"id":"p_0kafab4s","name":"Gayathri","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_ejwbykis"],"spouses":["p_q4tpmgwv"],"children":["p_owxildwm","p_11fm74nh","p_yujy9ok3"],"y":0},"p_yslmanib":{"id":"p_yslmanib","name":"Manu (Durga Parameshwari)","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_ejwbykis"],"spouses":["p_m9jtgm2f"],"children":[],"y":0},"p_q4tpmgwv":{"id":"p_q4tpmgwv","name":"Atmalingam","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":[],"spouses":["p_0kafab4s"],"children":["p_owxildwm","p_11fm74nh","p_yujy9ok3"],"y":0},"p_m9jtgm2f":{"id":"p_m9jtgm2f","name":"Lakshman","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":[],"spouses":["p_yslmanib"],"children":[],"y":0},"p_wvxsa3ig":{"id":"p_wvxsa3ig","name":"Saraswathi Ammal","gender":"f","birth":"","death":"","notes":"","generation":-3,"parents":[],"spouses":["p_o2iunfg5"],"children":["p_ndu65gkc","p_lx9xwvq7","p_6rcltoy5","p_j30h8vio"],"x":190,"y":0,"z":-780},"p_cv80ywwe":{"id":"p_cv80ywwe","name":"Krishna Veni","gender":"f","birth":"","death":"","notes":"","generation":-3,"parents":["p_zlivkydl"],"spouses":["p_bot3i5hi"],"children":["p_y2irhevk","p_hn75ympv","p_bv4zb0nu"],"x":400,"y":0,"z":-780},"p_zlivkydl":{"id":"p_zlivkydl","name":"TBC","gender":"m","birth":"","death":"","notes":"","generation":-4,"parents":[],"spouses":[],"children":["p_cv80ywwe","p_o2iunfg5"],"x":105,"y":0,"z":-1040},"p_bot3i5hi":{"id":"p_bot3i5hi","name":"Natarajan","gender":"m","birth":"","death":"","notes":"","generation":-3,"parents":[],"spouses":["p_cv80ywwe"],"children":["p_y2irhevk","p_hn75ympv","p_bv4zb0nu"],"x":590,"y":0,"z":-780},"p_zwmxomos":{"id":"p_zwmxomos","name":"Sridhar","gender":"m","birth":"","death":"","notes":"","generation":0,"parents":["p_po8m8oz3","p_zy6lrmyj"],"spouses":["p_h53sqkje"],"children":["p_929oseb7"],"y":0},"p_os82ghhh":{"id":"p_os82ghhh","name":"Prasanna","gender":"m","birth":"","death":"","notes":"","generation":0,"parents":["p_po8m8oz3","p_zy6lrmyj"],"spouses":["p_airthstq"],"children":["p_35w0d3k2"],"y":0},"p_owxildwm":{"id":"p_owxildwm","name":"Meenakshi","gender":"o","birth":"","death":"","notes":"","generation":0,"parents":["p_0kafab4s","p_q4tpmgwv"],"spouses":[],"children":[],"y":0},"p_11fm74nh":{"id":"p_11fm74nh","name":"Damodaran","gender":"m","birth":"","death":"","notes":"","generation":0,"parents":["p_0kafab4s","p_q4tpmgwv"],"spouses":[],"children":[],"y":0},"p_yujy9ok3":{"id":"p_yujy9ok3","name":"Rama","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":["p_0kafab4s","p_q4tpmgwv"],"spouses":[],"children":[],"y":0},"p_h53sqkje":{"id":"p_h53sqkje","name":"Gomathi","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":[],"spouses":["p_zwmxomos"],"children":["p_929oseb7"],"y":0},"p_929oseb7":{"id":"p_929oseb7","name":"Srivatsan","gender":"m","birth":"","death":"","notes":"","generation":1,"parents":["p_zwmxomos","p_h53sqkje"],"spouses":[],"children":[],"y":0},"p_airthstq":{"id":"p_airthstq","name":"Aarthi","gender":"f","birth":"","death":"","notes":"","generation":0,"parents":[],"spouses":["p_os82ghhh"],"children":["p_35w0d3k2"],"y":0},"p_35w0d3k2":{"id":"p_35w0d3k2","name":"Dhruv","gender":"m","birth":"","death":"","notes":"","generation":1,"parents":["p_os82ghhh","p_airthstq"],"spouses":[],"children":[],"y":0},"p_y2irhevk":{"id":"p_y2irhevk","name":"Padma","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":["p_bot3i5hi","p_cv80ywwe"],"spouses":[],"children":[],"y":0},"p_hn75ympv":{"id":"p_hn75ympv","name":"Prema","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":["p_bot3i5hi","p_cv80ywwe"],"spouses":[],"children":[],"y":0},"p_bv4zb0nu":{"id":"p_bv4zb0nu","name":"Sashi","gender":"m","birth":"","death":"","notes":"","generation":-2,"parents":["p_bot3i5hi","p_cv80ywwe"],"spouses":[],"children":[],"y":0},"p_kehieg6k":{"id":"p_kehieg6k","name":"Sivasubramani","gender":"m","birth":"","death":"","notes":"","generation":-2,"parents":[],"spouses":["p_vsld2d9n"],"children":["p_xt0mhlw6"],"y":0},"p_vsld2d9n":{"id":"p_vsld2d9n","name":"Lakshmi Bai","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":["p_dubw63xx","p_m8tp3jok"],"spouses":["p_kehieg6k"],"children":["p_xt0mhlw6"],"y":0},"p_5piao1gp":{"id":"p_5piao1gp","name":"TBC (Wife 1)","gender":"f","birth":"","death":"","notes":"","generation":-3,"parents":[],"spouses":["p_dubw63xx"],"children":["p_6fz54dbz"],"x":-210,"y":0,"z":-780},"p_6fz54dbz":{"id":"p_6fz54dbz","name":"Subramaniam","gender":"m","birth":"","death":"","notes":"","generation":-2,"parents":["p_5piao1gp","p_dubw63xx"],"spouses":["p_ejcx232d"],"children":["p_0xxiix03","p_dl6hp4y7","p_ys1ymrl5","p_c52ykk88","p_5hrudth5","p_y0iztd35","p_djgglrub"],"y":0},"p_ejcx232d":{"id":"p_ejcx232d","name":"Anusiya (Thara appai)","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":[],"spouses":["p_6fz54dbz"],"children":["p_0xxiix03","p_dl6hp4y7","p_ys1ymrl5","p_c52ykk88","p_5hrudth5","p_y0iztd35","p_djgglrub"],"y":0},"p_0xxiix03":{"id":"p_0xxiix03","name":"Geetha","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_ejcx232d","p_6fz54dbz"],"spouses":[],"children":[],"y":0},"p_dl6hp4y7":{"id":"p_dl6hp4y7","name":"Gopal (Gopu)","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_ejcx232d","p_6fz54dbz"],"spouses":[],"children":[],"y":0},"p_ys1ymrl5":{"id":"p_ys1ymrl5","name":"Narayan","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_ejcx232d","p_6fz54dbz"],"spouses":[],"children":[],"y":0},"p_c52ykk88":{"id":"p_c52ykk88","name":"Nithyanamdam","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_ejcx232d","p_6fz54dbz"],"spouses":[],"children":[],"y":0},"p_5hrudth5":{"id":"p_5hrudth5","name":"Mohan","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_ejcx232d","p_6fz54dbz"],"spouses":["p_xqzeubnm"],"children":[],"y":0},"p_y0iztd35":{"id":"p_y0iztd35","name":"Gowri","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_ejcx232d","p_6fz54dbz"],"spouses":[],"children":[],"y":0},"p_djgglrub":{"id":"p_djgglrub","name":"Shanmugam","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_ejcx232d","p_6fz54dbz"],"spouses":[],"children":[],"y":0},"p_8geb57o1":{"id":"p_8geb57o1","name":"Parvathi","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":["p_dubw63xx","p_m8tp3jok"],"spouses":["p_nxt7le70"],"children":["p_s159fean","p_vpjzxbrm","p_7eddn1z5"],"y":0},"p_zfji0pfs":{"id":"p_zfji0pfs","name":"Jaya Lakshmi","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":["p_dubw63xx","p_m8tp3jok"],"spouses":[],"children":["p_1szm8r8u","p_0qp5354x"],"y":0},"p_ra17zrz9":{"id":"p_ra17zrz9","name":"Kokila (Koki)","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":["p_dubw63xx","p_m8tp3jok"],"spouses":["p_8nv0khhk"],"children":["p_erwkjr5i","p_lssjob1n","p_xqzeubnm","p_q5robozy","p_06cvgkgg"],"y":0},"p_nhy85sf7":{"id":"p_nhy85sf7","name":"Bhagya Lakshmi","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":["p_dubw63xx","p_m8tp3jok"],"spouses":[],"children":[],"y":0},"p_17x892kr":{"id":"p_17x892kr","name":"Kantha","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":["p_dubw63xx","p_m8tp3jok"],"spouses":["p_p3a3kuyu"],"children":["p_u91ql2pj","p_bj08gu8h"],"y":0},"p_g6rb87r7":{"id":"p_g6rb87r7","name":"Janaki (Jonny)","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":["p_dubw63xx","p_m8tp3jok"],"spouses":["p_p3a3kuyu"],"children":["p_01kjhb0d","p_h087w7n8"],"y":0},"p_68ui37r7":{"id":"p_68ui37r7","name":"Sushila (Susi)","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":["p_dubw63xx","p_m8tp3jok"],"spouses":["p_fd495v5o"],"children":["p_vci4miz3","p_65fmr7ns","p_gllanbfh","p_yxol9842"],"y":0},"p_ow0xge4s":{"id":"p_ow0xge4s","name":"Chelli (sister)","gender":"f","birth":"","death":"","notes":"","generation":-2,"parents":["p_dubw63xx","p_m8tp3jok"],"spouses":[],"children":[],"y":0},"p_1szm8r8u":{"id":"p_1szm8r8u","name":"Raghu","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_zfji0pfs"],"spouses":[],"children":[],"y":0},"p_0qp5354x":{"id":"p_0qp5354x","name":"Sarasu","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_zfji0pfs"],"spouses":[],"children":[],"y":0},"p_8nv0khhk":{"id":"p_8nv0khhk","name":"Ramachandran","gender":"m","birth":"","death":"","notes":"","generation":-2,"parents":[],"spouses":["p_ra17zrz9"],"children":["p_erwkjr5i","p_lssjob1n","p_xqzeubnm","p_q5robozy","p_06cvgkgg"],"y":0},"p_erwkjr5i":{"id":"p_erwkjr5i","name":"Babu","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_ra17zrz9","p_8nv0khhk"],"spouses":[],"children":[],"y":0},"p_lssjob1n":{"id":"p_lssjob1n","name":"Chandra","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_ra17zrz9","p_8nv0khhk"],"spouses":[],"children":[],"y":0},"p_xqzeubnm":{"id":"p_xqzeubnm","name":"Eshwari Mohan","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_ra17zrz9","p_8nv0khhk"],"spouses":["p_5hrudth5"],"children":[],"y":0},"p_q5robozy":{"id":"p_q5robozy","name":"Padma","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_ra17zrz9","p_8nv0khhk"],"spouses":[],"children":[],"y":0},"p_06cvgkgg":{"id":"p_06cvgkgg","name":"Chandra's next sister","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_ra17zrz9","p_8nv0khhk"],"spouses":[],"children":[],"y":0},"p_p3a3kuyu":{"id":"p_p3a3kuyu","name":"Shanmugam","gender":"m","birth":"","death":"","notes":"","generation":-2,"parents":[],"spouses":["p_17x892kr","p_g6rb87r7"],"children":["p_u91ql2pj","p_bj08gu8h","p_01kjhb0d","p_h087w7n8"],"y":0},"p_u91ql2pj":{"id":"p_u91ql2pj","name":"Udaya","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_17x892kr","p_p3a3kuyu"],"spouses":[],"children":[],"y":0},"p_bj08gu8h":{"id":"p_bj08gu8h","name":"Srinivas","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_17x892kr","p_p3a3kuyu"],"spouses":[],"children":[],"y":0},"p_01kjhb0d":{"id":"p_01kjhb0d","name":"Ravi","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_g6rb87r7","p_p3a3kuyu"],"spouses":[],"children":[],"y":0},"p_h087w7n8":{"id":"p_h087w7n8","name":"Kavya","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_g6rb87r7","p_p3a3kuyu"],"spouses":[],"children":[],"y":0},"p_fd495v5o":{"id":"p_fd495v5o","name":"Ganesh","gender":"m","birth":"","death":"","notes":"","generation":-2,"parents":[],"spouses":["p_68ui37r7"],"children":["p_vci4miz3","p_65fmr7ns","p_gllanbfh","p_yxol9842"],"y":0},"p_vci4miz3":{"id":"p_vci4miz3","name":"Mohana","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_fd495v5o","p_68ui37r7"],"spouses":[],"children":[],"y":0},"p_gllanbfh":{"id":"p_gllanbfh","name":"Devi","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_fd495v5o","p_68ui37r7"],"spouses":[],"children":[],"y":0},"p_yxol9842":{"id":"p_yxol9842","name":"Rajasekhar","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_fd495v5o","p_68ui37r7"],"spouses":["p_qdnu220c"],"children":[],"y":0},"p_nxt7le70":{"id":"p_nxt7le70","name":"Parvathy's Husband","gender":"o","birth":"","death":"","notes":"","generation":-2,"parents":[],"spouses":["p_8geb57o1"],"children":["p_s159fean","p_vpjzxbrm","p_7eddn1z5"],"y":0},"p_s159fean":{"id":"p_s159fean","name":"Arun","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_8geb57o1","p_nxt7le70"],"spouses":[],"children":[],"y":0},"p_vpjzxbrm":{"id":"p_vpjzxbrm","name":"Sathyamurthy","gender":"m","birth":"","death":"","notes":"","generation":-1,"parents":["p_8geb57o1","p_nxt7le70"],"spouses":[],"children":[],"y":0},"p_7eddn1z5":{"id":"p_7eddn1z5","name":"Lakshmi","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":["p_8geb57o1","p_nxt7le70"],"spouses":[],"children":[],"y":0},"p_qdnu220c":{"id":"p_qdnu220c","name":"Elizhizh","gender":"f","birth":"","death":"","notes":"","generation":-1,"parents":[],"spouses":["p_yxol9842"],"children":[],"y":0}},"rootId":"p_iq5bnw2y","expandedGroups":{"p_5cylxyzl|p_r1pe0q3h":true,"p_o2iunfg5":true,"p_82v0kd2u|p_csr55thf":true,"p_iyvcbc07|p_lx9xwvq7":true},"clusterThreshold":3,"pinnedIds":{"p_fmci28rm":true,"p_lx9xwvq7":true,"p_5cylxyzl":true,"p_xclzrtl1":true,"p_iyvcbc07":true},"collapsedGroups":{"p_9m932m4f|p_ndu65gkc":true,"p_82v0kd2u|p_csr55thf":true,"p_3zcsecri|p_hh9il0b5":true,"p_9ham2b57|p_xt0mhlw6":true,"p_fmci28rm|p_iq5bnw2y":true,"p_eeshnntq|p_xclzrtl1":true,"p_pt9pfqg0|p_r5z69vw3":true,"p_8rrnlxhs|p_y9yf373j":true,"p_okf0hu5v|p_tqmnzf0n":true,"p_80p8gumy|p_8eobg1zt":true,"p_65fmr7ns|p_ji0w5drg":true,"p_17er7q5y|p_i684i58w":true,"p_h53sqkje|p_zwmxomos":true,"p_airthstq|p_os82ghhh":true,"p_po8m8oz3|p_zy6lrmyj":true,"p_bot3i5hi|p_cv80ywwe":true,"p_0kafab4s|p_q4tpmgwv":true,"p_ejwbykis":true,"p_s7bfpsns|p_y25rpxdr":true,"p_kehieg6k|p_vsld2d9n":true,"p_zfji0pfs":true,"p_8nv0khhk|p_ra17zrz9":true,"p_o2iunfg5|p_wvxsa3ig":true,"p_17x892kr|p_p3a3kuyu":true,"p_g6rb87r7|p_p3a3kuyu":true,"p_5piao1gp|p_dubw63xx":true,"p_dubw63xx|p_m8tp3jok":true}};
+
+/* =========================================================
+   1. STATE
+   ========================================================= */
+let data = { nodes: {}, collapsedGroups: {}, pinnedIds: {} };
+let selectedId = null;
+
+function emptyData(){ return { nodes:{}, collapsedGroups:{}, pinnedIds:{} }; }
+function ensureShape(d){
+  if(!d || typeof d !== 'object' || !d.nodes) return null;
+  d.collapsedGroups = d.collapsedGroups || {};
+  d.pinnedIds = d.pinnedIds || {};
+  return d;
+}
+
+function loadIntoViewer(parsed, opts){
+  const shaped = ensureShape(parsed);
+  if(!shaped){ showToast("That file doesn't look like a family tree export."); return false; }
+  data = shaped;
+  selectedId = null;
+  document.getElementById('inspector').classList.remove('open');
+  document.getElementById('loadState').classList.remove('show');
+  view.panX = 0; view.panY = 0; view.zoom = 0.9;
+  applyWorldTransform();
+  renderAll();
+  if(!(opts && opts.silent)){
+    try{ sessionStorage.setItem('familyTreeViewerCache', JSON.stringify(data)); }catch(e){}
+  }
+  return true;
+}
+
+async function boot(){
+  // 0) Data baked directly into this file — works instantly, anywhere.
+  if(EMBEDDED_DATA){
+    if(loadIntoViewer(EMBEDDED_DATA, { silent:true })) return;
+  }
+
+  // 1) Otherwise, prefer a co-hosted data file, so a shared link still
+  // works with no steps as long as both files are hosted together.
+  try{
+    const res = await fetch('./family-tree-data.json', { cache: 'no-store' });
+    if(res.ok){
+      const parsed = await res.json();
+      if(loadIntoViewer(parsed)) return;
+    }
+  }catch(e){ /* not hosted here, or opened as a local file — fall through */ }
+
+  // 2) Otherwise, if this tab already loaded a file once this session, reuse it.
+  try{
+    const cached = sessionStorage.getItem('familyTreeViewerCache');
+    if(cached){
+      const parsed = JSON.parse(cached);
+      if(loadIntoViewer(parsed, { silent:true })) return;
+    }
+  }catch(e){}
+
+  // 3) Otherwise, ask for a file.
+  document.getElementById('loadState').classList.add('show');
+}
+
+/* =========================================================
+   2. DATA HELPERS (read-only)
+   ========================================================= */
+function node(id){ return data.nodes[id]; }
+function allNodes(){ return Object.values(data.nodes); }
+
+/* =========================================================
+   2b. CHILDREN COLLAPSING (view-only — folding/unfolding here never
+   changes the underlying data, just what's currently shown) */
+function groupKeyForNode(n){
+  return n.parents.length ? n.parents.slice().sort().join('|') : null;
+}
+function buildChildGroups(){
+  const groups = {};
+  allNodes().forEach(n=>{
+    const key = groupKeyForNode(n);
+    if(!key) return;
+    if(!groups[key]) groups[key] = { key, parentIds: n.parents.slice(), children: [] };
+    groups[key].children.push(n.id);
+  });
+  return groups;
+}
+function computeClusters(){
+  const groups = buildChildGroups();
+  const clusters = {};
+  const renderHidden = new Set();
+  const anchorOf = {};
+
+  const exempt = new Set();
+  if(data.rootId) exempt.add(data.rootId);
+  if(selectedId) exempt.add(selectedId);
+  Object.keys(data.pinnedIds).forEach(id=> exempt.add(id));
+
+  const foldInto = (id, key)=>{
+    if(exempt.has(id)) return;
+    if(renderHidden.has(id)) return;
+    renderHidden.add(id);
+    if(!(id in anchorOf)) anchorOf[id] = key;
+  };
+
+  const orderedGroups = Object.values(groups).sort((a,b)=>{
+    const ga = node(a.children[0]), gb = node(b.children[0]);
+    return (ga ? ga.generation : 0) - (gb ? gb.generation : 0);
+  });
+
+  orderedGroups.forEach(g=>{
+    const wantCollapsed = !!data.collapsedGroups[g.key];
+    const foldable = g.children.filter(cid=> !exempt.has(cid));
+    const clustered = wantCollapsed && foldable.length > 0;
+    clusters[g.key] = { ...g, clustered, foldable };
+    if(clustered){
+      foldable.forEach(cid=>{
+        foldInto(cid, g.key);
+        const sib = node(cid); if(!sib) return;
+        sib.spouses.forEach(sid=> foldInto(sid, g.key));
+        sib.children.forEach(kid=>{
+          foldInto(kid, g.key);
+          const k = node(kid); if(!k) return;
+          k.spouses.forEach(ksid=> foldInto(ksid, g.key));
+        });
+      });
+    }
+  });
+
+  const resolveAnchor = (key, seen)=>{
+    seen = seen || new Set();
+    if(seen.has(key)) return key;
+    seen.add(key);
+    const g = clusters[key];
+    if(!g) return key;
+    const parentAnchorKey = g.parentIds.map(pid=> anchorOf[pid]).find(k=> k && k !== key);
+    if(!parentAnchorKey) return key;
+    return resolveAnchor(parentAnchorKey, seen);
+  };
+  Object.keys(anchorOf).forEach(id=>{ anchorOf[id] = resolveAnchor(anchorOf[id]); });
+
+  return { clusters, renderHidden, anchorOf };
+}
+function groupMemberIds(key, anchorOf){
+  return Object.keys(anchorOf).filter(id=> anchorOf[id] === key);
+}
+function expandGroup(key){ delete data.collapsedGroups[key]; renderAll(); }
+function collapseGroup(key){ data.collapsedGroups[key] = true; renderAll(); }
+function toggleOwnChildrenCollapse(personId){
+  const groups = buildChildGroups();
+  const own = Object.values(groups).filter(g=> g.parentIds.includes(personId));
+  if(!own.length) return;
+  const anyCollapsed = own.some(g=> !!data.collapsedGroups[g.key]);
+  own.forEach(g=> anyCollapsed ? expandGroup(g.key) : collapseGroup(g.key));
+}
+function personHasCollapsibleChildren(personId, groupsCache){
+  const groups = groupsCache || buildChildGroups();
+  return Object.values(groups).some(g=> g.parentIds.includes(personId) && g.children.length > 0);
+}
+function personChildrenCurrentlyCollapsed(personId, groupsCache){
+  const groups = groupsCache || buildChildGroups();
+  const own = Object.values(groups).filter(g=> g.parentIds.includes(personId));
+  if(!own.length) return false;
+  return own.some(g=> !!data.collapsedGroups[g.key]);
+}
+
+/* =========================================================
+   3. LAYOUT (generations -> x,z)
+   ========================================================= */
+const NODE_SPACING = 210;
+const GEN_DEPTH = 260;
+const SPOUSE_GAP = 190;
+
+function computeLayout(clustersResult){
+  const { clusters, renderHidden, anchorOf } = clustersResult;
+
+  renderHidden.forEach(id=>{
+    const n = node(id);
+    if(n){ n.x = undefined; n.z = undefined; }
+  });
+
+  const effectiveByKey = {};
+  function effectiveNode(id){
+    if(renderHidden.has(id)){
+      const key = anchorOf[id];
+      return key ? effectiveByKey[key] : null;
+    }
+    return node(id);
+  }
+
+  const byGen = {};
+  allNodes().forEach(n=>{
+    if(renderHidden.has(n.id)) return;
+    (byGen[n.generation] = byGen[n.generation] || []).push(n);
+  });
+
+  const gens = Object.keys(byGen).map(Number).sort((a,b)=>a-b);
+
+  const genUnits = {};
+  gens.forEach(g=>{
+    const consumed = new Set();
+    const units = [];
+    byGen[g].forEach(n=>{
+      if(consumed.has(n.id)) return;
+      const partners = (n.spouses || [])
+        .map(sid=>node(sid))
+        .filter(p=>p && p.generation === g && !consumed.has(p.id) && !renderHidden.has(p.id));
+      const members = [n, ...partners];
+      members.forEach(m=>consumed.add(m.id));
+      units.push({ members });
+    });
+    genUnits[g] = units;
+  });
+
+  gens.forEach(g=>{
+    const units = genUnits[g];
+    const totalW = (units.length - 1) * NODE_SPACING;
+    units.forEach((u,i)=>{ u.x0 = i * NODE_SPACING - totalW/2; });
+  });
+
+  gens.forEach(g=>{
+    const units = genUnits[g];
+    units.forEach(u=>{
+      const targets = [];
+      u.members.forEach(m=>{
+        (m.parents || []).forEach(pid=>{
+          const p = effectiveNode(pid);
+          if(p && typeof p.x === 'number') targets.push(p.x);
+        });
+      });
+      u.target = targets.length ? (targets.reduce((a,b)=>a+b,0) / targets.length) : u.x0;
+    });
+    units.sort((a,b)=> a.target - b.target);
+
+    const widths = units.map(u => (u.members.length - 1) * SPOUSE_GAP);
+    const totalWidth = widths.reduce((a,b)=>a+b,0) + Math.max(0, units.length - 1) * NODE_SPACING;
+    let cursor = -totalWidth / 2;
+    units.forEach((u,i)=>{
+      const w = widths[i];
+      u.members.forEach((m,mi)=>{ m.x = cursor + mi * SPOUSE_GAP; });
+      cursor += w + NODE_SPACING;
+    });
+    units.forEach(u=> u.members.forEach(m=>{
+      m.y = 0;
+      m.z = g * GEN_DEPTH;
+    }));
+
+    Object.values(clusters).forEach(cg=>{
+      if(!cg.clustered || effectiveByKey[cg.key]) return;
+      const parents = cg.parentIds.map(pid=>node(pid))
+        .filter(p=> p && !renderHidden.has(p.id) && p.generation === g && typeof p.x === 'number');
+      if(parents.length !== cg.parentIds.length) return;
+      const avgX = parents.reduce((s,p)=>s+p.x,0) / parents.length;
+      effectiveByKey[cg.key] = { x: avgX, z: parents[0].z };
+    });
+  });
+
+  return effectiveByKey;
+}
+
+/* =========================================================
+   4. RENDER
+   ========================================================= */
+const view = { panX:0, panY:0, zoom:0.9 };
+let dragging=false, dragMoved=false, lastPX=0, lastPY=0;
+const pointers = new Map();
+let pinchStartDist = 0, pinchStartZoom = 1;
+
+function applyWorldTransform(){
+  const world = document.getElementById('world');
+  world.style.transform = `translate(${view.panX}px, ${view.panY}px) scale(${view.zoom})`;
+  requestAnimationFrame(updateConnectors);
+}
+
+function nodeEl(id){ return document.querySelector(`.node[data-id="${id}"]`); }
+
+function getFocusSet(){
+  if(!selectedId) return null;
+  const n = node(selectedId); if(!n) return null;
+  const set = new Set([n.id]);
+  n.spouses.forEach(sid=> set.add(sid));
+  n.parents.forEach(pid=>{
+    set.add(pid);
+    const p = node(pid);
+    if(p) p.parents.forEach(gpid=> set.add(gpid));
+  });
+  n.children.forEach(cid=> set.add(cid));
+  return set;
+}
+
+let lastAnchorOf = {};
+function effectiveAnchorId(id){
+  return (id in lastAnchorOf) ? ('indicator:' + lastAnchorOf[id]) : id;
+}
+
+function renderAll(){
+  const clustersResult = computeClusters();
+  const { clusters, renderHidden, anchorOf } = clustersResult;
+  lastAnchorOf = anchorOf;
+
+  if(selectedId && renderHidden.has(selectedId)){
+    selectedId = null;
+    document.getElementById('inspector').classList.remove('open');
+  }
+
+  const effectiveByKey = computeLayout(clustersResult);
+  const wrap = document.getElementById('nodesLayer');
+  const nodesArr = allNodes().filter(n=> !renderHidden.has(n.id));
+
+  const existing = new Set(Array.from(wrap.querySelectorAll('.node')).map(el=>el.dataset.id));
+  const wanted = new Set(nodesArr.map(n=>n.id));
+  existing.forEach(id=>{ if(!wanted.has(id)) wrap.querySelector(`.node[data-id="${id}"]`)?.remove(); });
+
+  const focusSet = getFocusSet();
+  const groupsCache = buildChildGroups();
+
+  nodesArr.forEach(n=>{
+    let el = nodeEl(n.id);
+    if(!el){
+      el = document.createElement('div');
+      el.className = 'node';
+      el.dataset.id = n.id;
+      el.addEventListener('click', (e)=>{
+        const btn = e.target.closest('.child-collapse-btn');
+        if(btn){
+          e.stopPropagation();
+          toggleOwnChildrenCollapse(n.id);
+          return;
+        }
+        if(!dragMoved) openInspector(n.id);
+        e.stopPropagation();
+      });
+      wrap.appendChild(el);
+    }
+    el.style.transform = `translate(${n.x}px, ${n.z}px)`;
+    el.classList.toggle('selected', n.id === selectedId);
+    el.classList.toggle('kin-highlight', !!focusSet && focusSet.has(n.id) && n.id !== selectedId);
+    el.classList.toggle('dimmed', !!focusSet && !focusSet.has(n.id));
+    const initials = (n.name||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    const hasKids = personHasCollapsibleChildren(n.id, groupsCache);
+    const kidsCollapsed = hasKids && personChildrenCurrentlyCollapsed(n.id, groupsCache);
+    const nameClass = (n.name||'').length > 16 ? 'name long-name' : 'name';
+    el.innerHTML = `
+      ${n.generation===0 && n.id===data.rootId ? '<div class="tag">you</div>' : ''}
+      ${data.pinnedIds[n.id] ? '<div class="pin-tag">pinned</div>' : ''}
+      <div class="row">
+        <div class="avatar g-${n.gender}">${initials||'?'}</div>
+        <div class="info">
+          <div class="${nameClass}">${escapeHtml(n.name)}</div>
+          <div class="years">${yearsLabel(n)}</div>
+        </div>
+      </div>
+      ${hasKids && !kidsCollapsed ? `<button class="child-collapse-btn" title="Collapse children">⌄</button>` : ''}`;
+  });
+
+  renderCollapseIndicators(clusters, anchorOf, effectiveByKey, focusSet);
+
+  requestAnimationFrame(updateConnectors);
+  if(selectedId) refreshInspectorContent();
+}
+
+const INDICATOR_OFFSET = 58;
+
+function renderCollapseIndicators(clusters, anchorOf, effectiveByKey, focusSet){
+  const wrap = document.getElementById('nodesLayer');
+  const clusteredGroups = Object.values(clusters).filter(g=> g.clustered && effectiveByKey[g.key]);
+  const wantedIds = new Set(clusteredGroups.map(g=> 'indicator:' + g.key));
+
+  Array.from(wrap.querySelectorAll('.collapse-indicator')).forEach(el=>{
+    if(!wantedIds.has(el.dataset.id)) el.remove();
+  });
+
+  clusteredGroups.forEach(g=>{
+    const pos = effectiveByKey[g.key];
+    const memberIds = groupMemberIds(g.key, anchorOf);
+    if(!memberIds.length) return;
+
+    const id = 'indicator:' + g.key;
+    let el = document.querySelector(`.collapse-indicator[data-id="${id}"]`);
+    if(!el){
+      el = document.createElement('div');
+      el.className = 'collapse-indicator';
+      el.dataset.id = id;
+      el.addEventListener('click', (e)=>{ e.stopPropagation(); expandGroup(g.key); });
+      wrap.appendChild(el);
+    }
+    el.style.transform = `translate(${pos.x}px, ${pos.z + INDICATOR_OFFSET}px) translate(-50%, -50%)`;
+    const inFocus = memberIds.some(mid=> focusSet && focusSet.has(mid));
+    el.classList.toggle('kin-highlight', !!focusSet && inFocus);
+    el.classList.toggle('dimmed', !!focusSet && !inFocus);
+
+    const count = g.foldable.length;
+    const noun = count === 1 ? 'child' : 'children';
+    const hasVisibleSiblings = g.children.length > g.foldable.length;
+    const prefix = hasVisibleSiblings ? '+' : '';
+    el.title = `${prefix}${count} ${noun} — tap to expand`;
+    el.textContent = `${prefix}${count} ⌃`;
+  });
+}
+
+function yearsLabel(n){
+  if(!n.birth && !n.death) return '';
+  return `${n.birth||'?'} – ${n.death||'present'}`;
+}
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+function updateConnectors(){
+  const svg = document.getElementById('svgOverlay');
+  const stageRect = document.getElementById('stage').getBoundingClientRect();
+  svg.setAttribute('width', stageRect.width);
+  svg.setAttribute('height', stageRect.height);
+  let html = '';
+
+  function center(id){
+    const el = document.querySelector(`[data-id="${id}"]`); if(!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width/2 - stageRect.left, y: r.top + r.height/2 - stageRect.top };
+  }
+
+  const focusSet = getFocusSet();
+  function faded(idA, idB){
+    return !!focusSet && !(focusSet.has(idA) && focusSet.has(idB));
+  }
+
+  const drawnParentChild = new Set();
+  const drawnSpouse = new Set();
+  allNodes().forEach(n=>{
+    n.children.forEach(cid=>{
+      const src = effectiveAnchorId(n.id), dst = effectiveAnchorId(cid);
+      if(src === dst) return;
+      const pairKey = src + '>>' + dst;
+      if(drawnParentChild.has(pairKey)) return;
+      drawnParentChild.add(pairKey);
+      const c1 = center(src), c2 = center(dst);
+      if(c1 && c2){
+        const dim = faded(n.id, cid);
+        const midY = (c1.y + c2.y)/2;
+        html += `<path d="M ${c1.x} ${c1.y} C ${c1.x} ${midY}, ${c2.x} ${midY}, ${c2.x} ${c2.y}"
+          stroke="${dim ? '#3a4250' : '#63806a'}" stroke-width="1.6" fill="none" opacity="${dim ? 0.18 : 0.75}"/>`;
+      }
+    });
+    n.spouses.forEach(sid=>{
+      const src = effectiveAnchorId(n.id), dst = effectiveAnchorId(sid);
+      if(src === dst) return;
+      const key = [src,dst].sort().join('|');
+      if(drawnSpouse.has(key)) return;
+      drawnSpouse.add(key);
+      const c1 = center(src), c2 = center(sid);
+      if(c1 && c2){
+        const dim = faded(n.id, sid);
+        html += `<line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}"
+          stroke="${dim ? '#3a4250' : '#c9a24b'}" stroke-width="1.6" stroke-dasharray="2 4" opacity="${dim ? 0.18 : 0.85}"/>`;
+      }
+    });
+  });
+  svg.innerHTML = html;
+}
+
+/* =========================================================
+   5. VIEW CONTROLS — pan / zoom
+   ========================================================= */
+const stageEl = document.getElementById('stage');
+
+stageEl.addEventListener('wheel', (e)=>{
+  e.preventDefault();
+  const delta = -e.deltaY * 0.0016;
+  view.zoom = clamp(view.zoom * (1+delta), 0.25, 2.6);
+  applyWorldTransform();
+}, { passive:false });
+
+stageEl.addEventListener('pointerdown', (e)=>{
+  pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(pointers.size === 1){
+    dragging = true; dragMoved = false;
+    lastPX = e.clientX; lastPY = e.clientY;
+    stageEl.classList.add('dragging');
+  }
+});
+window.addEventListener('pointermove', (e)=>{
+  if(!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+
+  if(pointers.size === 2){
+    const pts = Array.from(pointers.values());
+    const dist = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+    if(!pinchStartDist){ pinchStartDist = dist; pinchStartZoom = view.zoom; }
+    view.zoom = clamp(pinchStartZoom * (dist/pinchStartDist), 0.25, 2.6);
+    applyWorldTransform();
+    return;
+  }
+  if(dragging){
+    const dx = e.clientX - lastPX, dy = e.clientY - lastPY;
+    if(Math.abs(dx)+Math.abs(dy) > 3) dragMoved = true;
+    view.panX += dx; view.panY += dy;
+    lastPX = e.clientX; lastPY = e.clientY;
+    applyWorldTransform();
+  }
+});
+window.addEventListener('pointerup', (e)=>{
+  pointers.delete(e.pointerId);
+  if(pointers.size < 2) pinchStartDist = 0;
+  if(pointers.size === 0){ dragging=false; stageEl.classList.remove('dragging'); }
+});
+
+document.getElementById('zoomIn').addEventListener('click', ()=>{ view.zoom = clamp(view.zoom*1.2,0.25,2.6); applyWorldTransform(); });
+document.getElementById('zoomOut').addEventListener('click', ()=>{ view.zoom = clamp(view.zoom/1.2,0.25,2.6); applyWorldTransform(); });
+document.getElementById('resetViewBtn').addEventListener('click', ()=>{
+  view.panX=0; view.panY=0; view.zoom=0.9;
+  applyWorldTransform();
+});
+window.addEventListener('resize', ()=> requestAnimationFrame(updateConnectors));
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+/* =========================================================
+   6. INSPECTOR PANEL (read-only)
+   ========================================================= */
+const inspector = document.getElementById('inspector');
+
+function openInspector(id){
+  selectedId = id;
+  inspector.classList.add('open');
+  renderAll();
+}
+document.getElementById('inspClose').addEventListener('click', ()=>{
+  inspector.classList.remove('open'); selectedId=null; renderAll();
+});
+
+function kinLine(ids, emptyText){
+  if(!ids || !ids.length) return `<span>${emptyText}</span>`;
+  return ids.map(id=>{
+    const n = node(id); if(!n) return '';
+    return `<a data-goto="${id}">${escapeHtml(n.name)}</a>`;
+  }).join(', ');
+}
+
+function refreshInspectorContent(){
+  const n = node(selectedId);
+  if(!n){ inspector.classList.remove('open'); return; }
+  document.getElementById('inspName').textContent = n.name;
+  document.getElementById('inspYears').textContent = yearsLabel(n) || 'no dates recorded';
+  document.getElementById('kinParents').innerHTML = kinLine(n.parents, 'None recorded');
+  document.getElementById('kinSiblings').innerHTML = kinLine(siblingsOf(n), 'None recorded');
+  document.getElementById('kinSpouses').innerHTML = kinLine(n.spouses, 'None recorded');
+  document.getElementById('kinChildren').innerHTML = kinLine(n.children, 'None recorded');
+  document.getElementById('inspNotes').textContent = n.notes || '';
+  document.getElementById('inspPinnedNote').style.display = data.pinnedIds[n.id] ? '' : 'none';
+}
+function siblingsOf(n){
+  const set = new Set();
+  n.parents.forEach(pid=>{ const p=node(pid); if(p) p.children.forEach(cid=>{ if(cid!==n.id) set.add(cid); }); });
+  return Array.from(set);
+}
+document.getElementById('inspector').addEventListener('click', (e)=>{
+  const a = e.target.closest('a[data-goto]');
+  if(a){ openInspector(a.dataset.goto); }
+});
+
+/* =========================================================
+   7. LOAD FILE (drag/drop + picker) and DOWNLOAD
+   ========================================================= */
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+function handleFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(loadIntoViewer(parsed)) showToast('Tree loaded.');
+    }catch(e){ showToast("That file couldn't be read as JSON."); }
+  };
+  reader.readAsText(file);
+}
+dropZone.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', (e)=>{ handleFile(e.target.files[0]); e.target.value=''; });
+['dragenter','dragover'].forEach(evt=>{
+  dropZone.addEventListener(evt, (e)=>{ e.preventDefault(); dropZone.classList.add('hover'); });
+});
+['dragleave','drop'].forEach(evt=>{
+  dropZone.addEventListener(evt, (e)=>{ e.preventDefault(); dropZone.classList.remove('hover'); });
+});
+dropZone.addEventListener('drop', (e)=>{
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  handleFile(file);
+});
+document.getElementById('loadFileBtn').addEventListener('click', ()=> fileInput.click());
+
+document.getElementById('downloadBtn').addEventListener('click', ()=>{
+  if(!allNodes().length){ showToast('Nothing loaded yet.'); return; }
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'family-tree-backup.json'; a.click();
+  URL.revokeObjectURL(url);
+});
+
+/* =========================================================
+   8. TOAST
+   ========================================================= */
+let toastTimer = null;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), 2600);
+}
+
+/* =========================================================
+   9. BOOT
+   ========================================================= */
+applyWorldTransform();
+boot();
+
+})();
+</script>
+</body>
+</html>
